@@ -26,6 +26,9 @@ export default function Home() {
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
       <h1 style={{ fontSize: 24, fontWeight: 600 }}>BiPi — MVP</h1>
+
+  <p><a href="/productos">➡ Ver comparación por producto</a></p>
+
       <p>Tiendas cargadas desde Supabase:</p>
 
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}

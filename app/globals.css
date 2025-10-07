@@ -1,1 +1,122 @@
-body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+/* Tipografía base (Inter con fallbacks del sistema) */
+@font-face {
+  font-family: Inter;
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: local("Inter"), local("Inter var");
+}
+
+:root {
+  --bipi-blue: #1E3A8A;   /* azul principal */
+  --bipi-blue-600: #2747b3;
+  --bipi-green: #16A34A;  /* verde acento (coincide con tu resaltado de mínimo) */
+  --bipi-text: #111827;   /* gris muy oscuro */
+  --bipi-muted: #6B7280;  /* texto secundario */
+  --bipi-border: #E5E7EB; /* bordes */
+  --bipi-bg: #F9FAFB;     /* fondo suave */
+  --bipi-white: #ffffff;
+}
+
+* { box-sizing: border-box; }
+html, body { padding: 0; margin: 0; }
+body {
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  color: var(--bipi-text);
+  background: var(--bipi-bg);
+}
+
+/* Contenedor centrado */
+.bipi-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* Header */
+.bipi-header {
+  background: var(--bipi-white);
+  border-bottom: 1px solid var(--bipi-border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.bipi-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+
+.bipi-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.bipi-logo-icon {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bipi-blue);
+  color: var(--bipi-white);
+  font-size: 18px;
+}
+
+.bipi-logo-text {
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--bipi-blue);
+  letter-spacing: 0.2px;
+}
+
+/* Nav */
+.bipi-nav {
+  display: flex; gap: 16px;
+}
+.bipi-nav-link {
+  color: var(--bipi-muted);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+.bipi-nav-link:hover {
+  color: var(--bipi-blue);
+  background: #EEF2FF; /* leve hover violeta-azulado */
+}
+
+/* Main */
+.bipi-main {
+  padding: 20px 16px 40px;
+}
+
+/* Footer */
+.bipi-footer {
+  border-top: 1px solid var(--bipi-border);
+  background: var(--bipi-white);
+}
+.bipi-footer-inner {
+  display: flex; flex-wrap: wrap;
+  align-items: center; justify-content: space-between;
+  gap: 12px;
+  padding: 18px 0;
+  color: var(--bipi-muted);
+  font-size: 14px;
+}
+
+/* Utilidades generales por si las necesitas */
+.bipi-card {
+  background: var(--bipi-white);
+  border: 1px solid var(--bipi-border);
+  border-radius: 14px;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.03);
+}
+.bipi-link {
+  color: var(--bipi-blue);
+  text-decoration: none;
+}
+.bipi-link:hover { text-decoration: underline; }

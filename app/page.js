@@ -27,42 +27,69 @@ export default function Home() {
 
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
-      {/* 🟦 Banner superior */}
+      {/* 🛒 Banner con imagen de fondo */}
       <section
         style={{
           position: 'relative',
-          background: 'linear-gradient(135deg, #1E3A8A, #2563EB)',
-          borderRadius: 14,
-          padding: '40px 24px',
-          color: 'white',
-          textAlign: 'center',
+          borderRadius: 16,
+          overflow: 'hidden',
+          marginBottom: 32,
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          marginBottom: 24
         }}
       >
-        <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 12 }}>
-          {APP_NAME}: compara precios y ahorra 💰
-        </h1>
-        <p style={{ fontSize: 17, marginBottom: 24 }}>
-          Encuentra los mejores precios de supermercados en la Región del Biobío
-          — todo en un solo lugar.
-        </p>
-        <a
-          href="/productos"
+        {/* Imagen de fondo */}
+        <img
+          src="https://images.unsplash.com/photo-1606813902779-5e3a1d7e6b74?auto=format&fit=crop&w=1200&q=80"
+          alt="Carrito de compras"
           style={{
-            display: 'inline-block',
-            backgroundColor: '#FACC15',
-            color: '#1E3A8A',
-            padding: '12px 24px',
-            borderRadius: 10,
-            fontWeight: 600,
-            textDecoration: 'none',
-            fontSize: 16,
-            boxShadow: '0 3px 6px rgba(0,0,0,0.2)'
+            width: '100%',
+            height: '300px',
+            objectFit: 'cover',
+            filter: 'brightness(0.6)',
+          }}
+        />
+
+        {/* Texto sobre la imagen */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            textAlign: 'center',
+            color: 'white',
+            padding: '0 20px',
           }}
         >
-          🛒 Ver productos
-        </a>
+          <h1 style={{ fontSize: 34, fontWeight: 800, marginBottom: 10 }}>
+            {APP_NAME}: compara precios y ahorra 💰
+          </h1>
+          <p style={{ fontSize: 18, maxWidth: 700, marginBottom: 24 }}>
+            Encuentra los mejores precios de supermercados en la Región del Biobío
+            — todo en un solo lugar.
+          </p>
+          <a
+            href="/productos"
+            style={{
+              display: 'inline-block',
+              backgroundColor: '#FACC15',
+              color: '#1E3A8A',
+              padding: '12px 24px',
+              borderRadius: 10,
+              fontWeight: 600,
+              textDecoration: 'none',
+              fontSize: 17,
+              boxShadow: '0 3px 6px rgba(0,0,0,0.2)',
+            }}
+          >
+            🛒 Ver productos
+          </a>
+        </div>
       </section>
 
       {/* 🧾 Contenido informativo */}

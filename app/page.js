@@ -27,7 +27,7 @@ export default function Home() {
 
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
-      {/* 🛒 Banner con imagen de fondo */}
+      {/* 🛒 Banner con imagen, logo y texto */}
       <section
         style={{
           position: 'relative',
@@ -43,13 +43,13 @@ export default function Home() {
           alt="Carrito de compras"
           style={{
             width: '100%',
-            height: '300px',
+            height: '320px',
             objectFit: 'cover',
-            filter: 'brightness(0.6)',
+            filter: 'brightness(0.55)',
           }}
         />
 
-        {/* Texto sobre la imagen */}
+        {/* Logo y texto superpuestos */}
         <div
           style={{
             position: 'absolute',
@@ -66,8 +66,29 @@ export default function Home() {
             padding: '0 20px',
           }}
         >
+          {/* Logo BiPi */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 18,
+              left: 22,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 22,
+              fontWeight: 700,
+              color: 'white',
+              backgroundColor: 'rgba(0,0,0,0.25)',
+              padding: '6px 12px',
+              borderRadius: 10,
+              backdropFilter: 'blur(3px)',
+            }}
+          >
+            🛒 {APP_NAME}
+          </div>
+
           <h1 style={{ fontSize: 34, fontWeight: 800, marginBottom: 10 }}>
-            {APP_NAME}: compara precios y ahorra 💰
+            Compara precios y ahorra 💰
           </h1>
           <p style={{ fontSize: 18, maxWidth: 700, marginBottom: 24 }}>
             Encuentra los mejores precios de supermercados en la Región del Biobío
@@ -87,7 +108,7 @@ export default function Home() {
               boxShadow: '0 3px 6px rgba(0,0,0,0.2)',
             }}
           >
-            🛒 Ver productos
+            🛍️ Ver productos
           </a>
         </div>
       </section>

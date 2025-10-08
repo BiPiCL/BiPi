@@ -27,11 +27,9 @@ export default function Home() {
 
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
-      {/* 🛒 Banner fijo sin saltos */}
+      {/* 🛒 Banner estable SIN IMAGEN */}
       <section className="hero" aria-label="Banner de BiPi">
-        <div className="hero-bg" />
         <div className="hero-badge">🛒 {APP_NAME}</div>
-
         <div className="hero-center">
           <h1 style={{ fontSize: 34, fontWeight: 800, marginBottom: 10 }}>
             Compara precios y ahorra 💰

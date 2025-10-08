@@ -25,9 +25,13 @@ export default function Home() {
     })();
   }, []);
 
+  // Imagen del banner (puedes cambiarla si quieres)
+  const HERO_IMG =
+    'https://images.unsplash.com/photo-1606813902779-5e3a1d7e6b74?auto=format&fit=crop&w=1600&q=80';
+
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
-      {/* 🛒 Banner con imagen, logo y texto */}
+      {/* 🛒 Banner con fondo CSS (cover + degradado) */}
       <section
         style={{
           position: 'relative',
@@ -35,64 +39,54 @@ export default function Home() {
           overflow: 'hidden',
           marginBottom: 32,
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          height: 320,
+          backgroundImage: `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url('${HERO_IMG}')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
         }}
+        aria-label="Banner de BiPi"
       >
-        {/* Imagen de fondo */}
-        <img
-          src="https://images.unsplash.com/photo-1606813902779-5e3a1d7e6b74?auto=format&fit=crop&w=1200&q=80"
-          alt="Carrito de compras"
-          style={{
-            width: '100%',
-            height: '320px',
-            objectFit: 'cover',
-            filter: 'brightness(0.55)',
-          }}
-        />
-
-        {/* Logo y texto superpuestos */}
+        {/* Logo BiPi en esquina */}
         <div
           style={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
+            top: 18,
+            left: 22,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 22,
+            fontWeight: 700,
+            color: 'white',
+            backgroundColor: 'rgba(0,0,0,0.25)',
+            padding: '6px 12px',
+            borderRadius: 10,
+            backdropFilter: 'blur(3px)'
+          }}
+        >
+          🛒 {APP_NAME}
+        </div>
+
+        {/* Texto centrado */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
             textAlign: 'center',
             color: 'white',
-            padding: '0 20px',
+            padding: '0 20px'
           }}
         >
-          {/* Logo BiPi */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 18,
-              left: 22,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              fontSize: 22,
-              fontWeight: 700,
-              color: 'white',
-              backgroundColor: 'rgba(0,0,0,0.25)',
-              padding: '6px 12px',
-              borderRadius: 10,
-              backdropFilter: 'blur(3px)',
-            }}
-          >
-            🛒 {APP_NAME}
-          </div>
-
           <h1 style={{ fontSize: 34, fontWeight: 800, marginBottom: 10 }}>
             Compara precios y ahorra 💰
           </h1>
           <p style={{ fontSize: 18, maxWidth: 700, marginBottom: 24 }}>
-            Encuentra los mejores precios de supermercados en la Región del Biobío
-            — todo en un solo lugar.
+            Encuentra los mejores precios de supermercados en la Región del Biobío — todo en un solo lugar.
           </p>
           <a
             href="/productos"
@@ -105,7 +99,7 @@ export default function Home() {
               fontWeight: 600,
               textDecoration: 'none',
               fontSize: 17,
-              boxShadow: '0 3px 6px rgba(0,0,0,0.2)',
+              boxShadow: '0 3px 6px rgba(0,0,0,0.2)'
             }}
           >
             🛍️ Ver productos
@@ -118,9 +112,8 @@ export default function Home() {
         Bienvenido a {APP_NAME}
       </h2>
       <p style={{ fontSize: 16, color: '#374151', marginBottom: 20 }}>
-        Tu comparador de precios de supermercados en Chile. Compara productos
-        esenciales como arroz, aceite, fideos, papel higiénico y más entre
-        Lider, Jumbo, Unimarc y Santa Isabel.
+        Tu comparador de precios de supermercados en Chile. Compara productos esenciales como arroz, aceite,
+        fideos, papel higiénico y más entre Lider, Jumbo, Unimarc y Santa Isabel.
       </p>
 
       <p style={{ fontSize: 16, fontWeight: 600, color: '#111827', marginTop: 30 }}>
@@ -140,7 +133,7 @@ export default function Home() {
             >
               {s.name}
             </a>{' '}
-            <small style={{ color: '#6B7280' }}>({s.slug})</small>
+              <small style={{ color: '#6B7280' }}>({s.slug})</small>
           </li>
         ))}
       </ul>

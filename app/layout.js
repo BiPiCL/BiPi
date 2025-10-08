@@ -1,11 +1,10 @@
 import './globals.css';
 import Header from '../components/Header';
 
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'BiPi';
-
 export const metadata = {
-  title: `${APP_NAME} — Comparador de precios`,
-  description: 'Comparador de precios de supermercados en Chile.',
+  title: 'BiPi Chile — Comparador de precios',
+  description: 'Compara precios de supermercados en la Región del Biobío y Chile.',
+  icons: { icon: '/favicon.ico' },
 };
 
 export default function RootLayout({ children }) {
@@ -13,17 +12,15 @@ export default function RootLayout({ children }) {
     <html lang="es">
       <body>
         <Header />
-        <main className="bipi-container bipi-main">
-          {children}
-        </main>
-        <footer className="bipi-footer">
-          <div className="bipi-container bipi-footer-inner">
-            <span>© {new Date().getFullYear()} {APP_NAME} — Comparador de precios</span>
-            <span>Contacto: {process.env.NEXT_PUBLIC_CONTACT_EMAIL}</span>
-          </div>
+        {children}
+        <footer style={{
+          maxWidth: 900, margin: '40px auto 24px', padding: '0 16px',
+          color: '#6B7280', fontSize: 14, borderTop: '1px solid #e5e7eb', paddingTop: 16
+        }}>
+          © {new Date().getFullYear()} BiPi Chile — Comparador de precios
+          <span style={{ float: 'right' }}>Contacto: {process.env.NEXT_PUBLIC_CONTACT_EMAIL}</span>
         </footer>
       </body>
     </html>
   );
 }
-

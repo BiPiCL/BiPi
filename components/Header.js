@@ -1,22 +1,22 @@
 'use client';
 import React from 'react';
 
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'BiPi';
-
 export default function Header() {
   return (
-    <header className="bipi-header">
-      <div className="bipi-container bipi-header-inner">
-        <a className="bipi-logo" href="/">
-          <span className="bipi-logo-icon" aria-hidden="true">🛒</span>
-          <span className="bipi-logo-text">{APP_NAME}</span>
+    <header className="navbar">
+      <div className="nav-inner">
+        {/* Marca */}
+        <a href="/" className="brand" aria-label="Inicio BiPi Chile">
+          <span className="brand-badge" aria-hidden>🛒</span>
+          <span>BiPi Chile</span>
         </a>
-        <nav className="bipi-nav">
-          <a className="bipi-nav-link" href="/">Inicio</a>
-          <a className="bipi-nav-link" href="/productos">Productos</a>
+
+        {/* Navegación */}
+        <nav className="nav-links" aria-label="Navegación principal">
+          <a href="/">Inicio</a>
+          <a href="/productos">Productos</a>
         </nav>
       </div>
     </header>
   );
 }
-

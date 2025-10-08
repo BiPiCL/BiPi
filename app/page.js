@@ -27,32 +27,55 @@ export default function Home() {
 
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1E3A8A', marginBottom: 10 }}>
-        Bienvenido a {APP_NAME}
-      </h1>
-
-      <p style={{ fontSize: 16, color: '#374151', marginBottom: 20 }}>
-        Tu comparador de precios de supermercados en Chile.
-      </p>
-
-      <p style={{ margin: '8px 0 20px' }}>
+      {/* 🟦 Banner superior */}
+      <section
+        style={{
+          position: 'relative',
+          background: 'linear-gradient(135deg, #1E3A8A, #2563EB)',
+          borderRadius: 14,
+          padding: '40px 24px',
+          color: 'white',
+          textAlign: 'center',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          marginBottom: 24
+        }}
+      >
+        <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 12 }}>
+          {APP_NAME}: compara precios y ahorra 💰
+        </h1>
+        <p style={{ fontSize: 17, marginBottom: 24 }}>
+          Encuentra los mejores precios de supermercados en la Región del Biobío
+          — todo en un solo lugar.
+        </p>
         <a
-          className="bipi-link"
           href="/productos"
           style={{
+            display: 'inline-block',
+            backgroundColor: '#FACC15',
             color: '#1E3A8A',
+            padding: '12px 24px',
+            borderRadius: 10,
             fontWeight: 600,
             textDecoration: 'none',
-            padding: '8px 12px',
-            border: '1px solid #1E3A8A',
-            borderRadius: '8px'
+            fontSize: 16,
+            boxShadow: '0 3px 6px rgba(0,0,0,0.2)'
           }}
         >
-          ➡ Ver comparación por producto
+          🛒 Ver productos
         </a>
+      </section>
+
+      {/* 🧾 Contenido informativo */}
+      <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 10 }}>
+        Bienvenido a {APP_NAME}
+      </h2>
+      <p style={{ fontSize: 16, color: '#374151', marginBottom: 20 }}>
+        Tu comparador de precios de supermercados en Chile. Compara productos
+        esenciales como arroz, aceite, fideos, papel higiénico y más entre
+        Lider, Jumbo, Unimarc y Santa Isabel.
       </p>
 
-      <p style={{ fontSize: 16, fontWeight: 600, color: '#111827' }}>
+      <p style={{ fontSize: 16, fontWeight: 600, color: '#111827', marginTop: 30 }}>
         Tiendas conectadas a {APP_NAME}:
       </p>
 
@@ -80,4 +103,3 @@ export default function Home() {
     </main>
   );
 }
-

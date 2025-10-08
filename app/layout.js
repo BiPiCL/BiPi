@@ -3,8 +3,7 @@ import Header from '../components/Header';
 
 export const metadata = {
   title: 'BiPi Chile — Comparador de precios',
-  description: 'Compara precios de supermercados en la Región del Biobío y Chile.',
-  icons: { icon: '/favicon.ico' },
+  description: 'Compara precios de supermercados en Chile.',
 };
 
 export default function RootLayout({ children }) {
@@ -12,13 +11,15 @@ export default function RootLayout({ children }) {
     <html lang="es">
       <body>
         <Header />
-        {children}
-        <footer style={{
-          maxWidth: 900, margin: '40px auto 24px', padding: '0 16px',
-          color: '#6B7280', fontSize: 14, borderTop: '1px solid #e5e7eb', paddingTop: 16
-        }}>
-          © {new Date().getFullYear()} BiPi Chile — Comparador de precios
-          <span style={{ float: 'right' }}>Contacto: {process.env.NEXT_PUBLIC_CONTACT_EMAIL}</span>
+        {/* Contenido de cada página */}
+        <main className="container">{children}</main>
+
+        {/* Footer */}
+        <footer className="site-footer">
+          <div className="container footer-inner">
+            <div>© {new Date().getFullYear()} BiPi Chile — <span className="text-muted">Comparador de precios</span></div>
+            <div>Contacto: bipichile2025@gmail.com</div>
+          </div>
         </footer>
       </body>
     </html>

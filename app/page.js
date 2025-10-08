@@ -27,94 +27,23 @@ export default function Home() {
 
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
-      {/* 🛒 Banner estable con relación de aspecto */}
-      <section
-        style={{
-          position: 'relative',
-          borderRadius: 16,
-          overflow: 'hidden',
-          marginBottom: 32,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        }}
-        aria-label="Banner de BiPi"
-      >
-        {/* Wrapper con relación de aspecto (≈ 3:1) */}
-        <div style={{ position: 'relative', width: '100%', paddingTop: '33%' }}>
-          {/* Capa de fondo con imagen + degradado */}
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundImage:
-                "linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url('https://images.unsplash.com/photo-1606813902779-5e3a1d7e6b74?auto=format&fit=crop&w=1600&q=80')",
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
-            }}
-          />
+      {/* 🛒 Banner fijo sin saltos */}
+      <section className="hero" aria-label="Banner de BiPi">
+        <div className="hero-bg" />
+        <div className="hero-badge">🛒 {APP_NAME}</div>
 
-          {/* Logo esquina */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 18,
-              left: 22,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              fontSize: 22,
-              fontWeight: 700,
-              color: 'white',
-              backgroundColor: 'rgba(0,0,0,0.25)',
-              padding: '6px 12px',
-              borderRadius: 10,
-              backdropFilter: 'blur(3px)',
-            }}
-          >
-            🛒 {APP_NAME}
-          </div>
-
-          {/* Texto centrado */}
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              textAlign: 'center',
-              color: 'white',
-              padding: '0 20px',
-            }}
-          >
-            <h1 style={{ fontSize: 34, fontWeight: 800, marginBottom: 10 }}>
-              Compara precios y ahorra 💰
-            </h1>
-            <p style={{ fontSize: 18, maxWidth: 700, marginBottom: 24 }}>
-              Encuentra los mejores precios de supermercados en la Región del Biobío — todo en un solo lugar.
-            </p>
-            <a
-              href="/productos"
-              style={{
-                display: 'inline-block',
-                backgroundColor: '#FACC15',
-                color: '#1E3A8A',
-                padding: '12px 24px',
-                borderRadius: 10,
-                fontWeight: 600,
-                textDecoration: 'none',
-                fontSize: 17,
-                boxShadow: '0 3px 6px rgba(0,0,0,0.2)',
-              }}
-            >
-              🛍️ Ver productos
-            </a>
-          </div>
+        <div className="hero-center">
+          <h1 style={{ fontSize: 34, fontWeight: 800, marginBottom: 10 }}>
+            Compara precios y ahorra 💰
+          </h1>
+          <p style={{ fontSize: 18, maxWidth: 700, marginBottom: 24 }}>
+            Encuentra los mejores precios de supermercados en la Región del Biobío — todo en un solo lugar.
+          </p>
+          <a href="/productos" className="hero-btn">🛍️ Ver productos</a>
         </div>
       </section>
 
-      {/* 🧾 Contenido informativo */}
+      {/* 🧾 Contenido principal */}
       <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 10 }}>
         Bienvenido a {APP_NAME}
       </h2>

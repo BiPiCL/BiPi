@@ -1,26 +1,26 @@
-import './globals.css';
-import Header from '../components/Header';
+// app/layout.tsx
+import "./globals.css";
+import type { Metadata } from "next";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
-export const metadata = {
-  title: 'BiPi Chile — Comparador de precios',
-  description: 'Compara precios de supermercados en Chile.',
+export const metadata: Metadata = {
+  title: "BiPi Chile — Comparador de precios",
+  description:
+    "Compara precios de supermercados chilenos como Jumbo, Líder, Unimarc y Santa Isabel. Encuentra los mejores precios en productos esenciales.",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="es">
-      <body>
+      <body className="min-h-screen flex flex-col bg-white font-inter antialiased">
         <Header />
-        {/* Contenido de cada página */}
-        <main className="container">{children}</main>
-
-        {/* Footer */}
-        <footer className="site-footer">
-          <div className="container footer-inner">
-            <div>© {new Date().getFullYear()} BiPi Chile — <span className="text-muted">Comparador de precios</span></div>
-            <div>Contacto: bipichile2025@gmail.com</div>
-          </div>
-        </footer>
+        <main className="flex-1">{children}</main>
+        <Footer />
       </body>
     </html>
   );

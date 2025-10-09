@@ -1,4 +1,4 @@
-// app/page.tsx
+// app/page.js
 import Link from "next/link";
 
 export default function HomePage() {
@@ -33,7 +33,7 @@ export default function HomePage() {
           <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900">
             Bienvenido a BiPi Chile
           </h2>
-          <p className="mt-3 text-gray-600">
+        <p className="mt-3 text-gray-600">
             Tu comparador de precios de supermercados en Chile. Compara
             productos esenciales como arroz, aceite, fideos, papel higiénico y
             más entre Líder, Jumbo, Unimarc y Santa Isabel.
@@ -44,22 +44,10 @@ export default function HomePage() {
               Tiendas conectadas a BiPi Chile:
             </h3>
             <ul className="mt-2 list-disc list-inside text-gray-700 space-y-1">
-              <li>
-                <span className="font-medium">Jumbo</span>{" "}
-                <span className="text-gray-500">(jumbo)</span>
-              </li>
-              <li>
-                <span className="font-medium">Líder</span>{" "}
-                <span className="text-gray-500">(lider)</span>
-              </li>
-              <li>
-                <span className="font-medium">Santa Isabel</span>{" "}
-                <span className="text-gray-500">(santa-isabel)</span>
-              </li>
-              <li>
-                <span className="font-medium">Unimarc</span>{" "}
-                <span className="text-gray-500">(unimarc)</span>
-              </li>
+              <li><span className="font-medium">Jumbo</span> <span className="text-gray-500">(jumbo)</span></li>
+              <li><span className="font-medium">Líder</span> <span className="text-gray-500">(lider)</span></li>
+              <li><span className="font-medium">Santa Isabel</span> <span className="text-gray-500">(santa-isabel)</span></li>
+              <li><span className="font-medium">Unimarc</span> <span className="text-gray-500">(unimarc)</span></li>
             </ul>
           </div>
         </div>
@@ -67,4 +55,3 @@ export default function HomePage() {
     </div>
   );
 }
-

@@ -3,48 +3,74 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// Conexión a Supabase (usa tus envs de Vercel)
+/* ===========================
+   Conexión a Supabase (env)
+   =========================== */
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-// Utilidad: normaliza texto (minúsculas, sin tildes)
-function norm(s = '') {
-  return s
+/* ===========================
+   Utilidades
+   =========================== */
+const norm = (s = '') =>
+  s
     .toString()
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
-}
 
-// Etiquetas lindas para los headers
-const TIENDA_LABEL = {
-  'lider': 'Líder',
-  'jumbo': 'Jumbo',
-  'unimarc': 'Unimarc',
-  'santa-isabel': 'Santa Isabel',
+const CLP = (v) =>
+  typeof v === 'number' ? `$${Number(v).toLocaleString('es-CL')}` : '—';
+
+/* Mapa de tiendas (slug → etiqueta bonita) */
+const STORE_META = {
+  'lider': { label: 'Líder' },
+  'jumbo': { label: 'Jumbo' },
+  'unimarc': { label: 'Unimarc' },
+  'santa-isabel': { label: 'Santa Isabel' },
 };
+const STORE_ORDER = ['lider', 'jumbo', 'unimarc', 'santa-isabel'];
 
-// Orden base de las columnas
-const TIENDAS_BASE = ['lider', 'jumbo', 'unimarc', 'santa-isabel'];
+/* Opciones de orden */
+const ORDER_OPTIONS = [
+  { id: 'price-asc', label: 'Precio más bajo ↑' },
+  { id: 'price-desc', label: 'Precio más bajo ↓' },
+  { id: 'name-asc', label: 'Nombre A → Z' },
+  { id: 'name-desc', label: 'Nombre Z → A' },
+];
 
 export default function Productos() {
+  /* -----------------------------
+     Estado de datos y filtros
+     ----------------------------- */
   const [rows, setRows] = useState([]);
   const [err, setErr] = useState(null);
 
-  // Toolbar
-  const [query, setQuery] = useState('');               // buscador
-  const [selected, setSelected] = useState(new Set());  // tiendas seleccionadas
-  const [sortBy, setSortBy] = useState('none');         // none | asc | desc
+  const [q, setQ] = useState('');
+  const [category, setCategory] = useState('todas');
+  const [order, setOrder] = useState('price-asc');
 
-  // Carga de datos
+  /* chips de tiendas activas */
+  const [activeStores, setActiveStores] = useState({
+    lider: true,
+    jumbo: true,
+    unimarc: true,
+    'santa-isabel': true,
+  });
+
+  /* -----------------------------
+     Carga de datos desde Supabase
+     ----------------------------- */
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase
         .from('product_price_matrix')
-        .select('product_id, producto, categoria, formato, tienda_slug, tienda, precio_clp')
+        .select(
+          'product_id, producto, categoria, formato, tienda_slug, tienda, precio_clp'
+        )
         .order('producto', { ascending: true });
 
       if (error) setErr(error.message);
@@ -52,245 +78,271 @@ export default function Productos() {
     })();
   }, []);
 
-  // Agrupar filas por producto
-  const productos = useMemo(() => {
-    const map = {};
-    rows.forEach(r => {
-      if (!map[r.producto]) {
-        map[r.producto] = { categoria: r.categoria, formato: r.formato, precios: {} };
-      }
-      map[r.producto].precios[r.tienda_slug] = r.precio_clp;
+  /* -----------------------------
+     Derivados: categorías únicas
+     ----------------------------- */
+  const categories = useMemo(() => {
+    const set = new Set();
+    rows.forEach((r) => {
+      if (r.categoria) set.add(r.categoria);
     });
-    return map;
+    return ['todas', ...Array.from(set).sort((a, b) => a.localeCompare(b))];
   }, [rows]);
 
-  // Tiendas visibles (si no hay selección, mostramos todas)
-  const tiendasVisibles = useMemo(() => {
-    return selected.size ? TIENDAS_BASE.filter(t => selected.has(t)) : TIENDAS_BASE;
-  }, [selected]);
+  /* -----------------------------
+     Agrupar filas por producto
+     ----------------------------- */
+  const productos = useMemo(() => {
+    const map = {};
+    rows.forEach((r) => {
+      const key = r.producto;
+      if (!map[key]) {
+        map[key] = {
+          categoria: r.categoria,
+          formato: r.formato,
+          precios: {}, // { slug: precio }
+        };
+      }
+      map[key].precios[r.tienda_slug] = r.precio_clp;
+    });
+    return map; // { nombre: {categoria, formato, precios} }
+  }, [rows]);
 
-  // Filtro + orden
-  const productosProcesados = useMemo(() => {
-    const filtro = norm(query);
+  /* -----------------------------
+     Tiendas visibles (chips)
+     ----------------------------- */
+  const visibleStores = useMemo(() => {
+    const list = STORE_ORDER.filter((slug) => activeStores[slug]);
+    return list.length ? list : STORE_ORDER; // si el usuario apaga todo, mostramos todas
+  }, [activeStores]);
 
-    let arr = Object.entries(productos);
+  /* -----------------------------
+     Filtrar + ordenar
+     ----------------------------- */
+  const qn = norm(q);
+  const filteredSorted = useMemo(() => {
+    let list = Object.entries(productos);
 
-    // 1) Filtro por buscador (nombre o categoría)
-    if (filtro) {
-      arr = arr.filter(([nombre, info]) => {
+    // Filtro buscador (nombre o categoría)
+    if (qn) {
+      list = list.filter(([nombre, info]) => {
         const n = norm(nombre);
-        const c = norm(info.categoria);
-        return n.includes(filtro) || c.includes(filtro);
+        const c = norm(info.categoria || '');
+        return n.includes(qn) || c.includes(qn);
       });
     }
 
-    // 2) Filtro por tiendas (si hay selección: mostrar productos con precio en al menos 1 tienda visible)
-    if (selected.size) {
-      arr = arr.filter(([_, info]) =>
-        tiendasVisibles.some(t => info.precios[t] != null)
+    // Filtro categoría
+    if (category !== 'todas') {
+      list = list.filter(([, info]) => info.categoria === category);
+    }
+
+    // Orden
+    if (order === 'name-asc' || order === 'name-desc') {
+      list.sort(([a], [b]) =>
+        order === 'name-asc' ? a.localeCompare(b) : b.localeCompare(a)
       );
-    }
-
-    // 3) Orden por precio mínimo (asc/desc) considerando columnas visibles
-    if (sortBy !== 'none') {
-      arr = arr.slice().sort((a, b) => {
-        const minA = minPrecio(a[1].precios, tiendasVisibles);
-        const minB = minPrecio(b[1].precios, tiendasVisibles);
-
-        if (minA == null && minB == null) return 0;
-        if (minA == null) return 1;  // los sin precio al final
-        if (minB == null) return -1;
-
-        return sortBy === 'asc' ? minA - minB : minB - minA;
+    } else {
+      // Orden por precio más bajo (considerando solo tiendas visibles)
+      list.sort(([, A], [, B]) => {
+        const minA = cheapestVisible(A.precios, visibleStores);
+        const minB = cheapestVisible(B.precios, visibleStores);
+        const va = minA ?? Number.POSITIVE_INFINITY;
+        const vb = minB ?? Number.POSITIVE_INFINITY;
+        return order === 'price-asc' ? va - vb : vb - va;
       });
     }
 
-    return arr;
-  }, [productos, query, selected, sortBy, tiendasVisibles]);
+    return list;
+  }, [productos, qn, category, order, visibleStores]);
 
-  // Helpers
-  const minPrecio = (precios, tiendas) => {
-    const vals = tiendas.map(t => precios[t]).filter(v => v != null);
+  /* Precio mínimo entre tiendas visibles */
+  function cheapestVisible(precios, stores) {
+    const vals = stores.map((s) => precios[s]).filter((v) => v != null);
     return vals.length ? Math.min(...vals) : null;
-  };
-  const fmt = (v) =>
-    typeof v === 'number'
-      ? `$${Number(v).toLocaleString('es-CL')}`
-      : '—';
+  }
 
-  // Interacción chips
-  const toggleTienda = (slug) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
+  /* Toggle chip de tienda */
+  const toggleStore = (slug) =>
+    setActiveStores((prev) => ({ ...prev, [slug]: !prev[slug] }));
+
+  const clearFilters = () => {
+    setQ('');
+    setCategory('todas');
+    setOrder('price-asc');
+    setActiveStores({
+      lider: true,
+      jumbo: true,
+      unimarc: true,
+      'santa-isabel': true,
     });
   };
-  const clearTiendas = () => setSelected(new Set());
 
+  /* -----------------------------
+     Render
+     ----------------------------- */
   return (
-    <main className="container" style={{ paddingTop: 16, paddingBottom: 30 }}>
-      <h1 className="page-title" style={{ marginBottom: 8, textAlign:'left' }}>
+    <main className="container" style={{ paddingTop: 18, paddingBottom: 24 }}>
+      <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>
         Comparador de precios — Productos
       </h1>
 
-      <p className="muted" style={{ textAlign:'justify', maxWidth:820, margin:'0 0 14px' }}>
-        Busca por nombre o categoría, filtra por tiendas y ordena por el precio mínimo. El precio más
-        bajo en cada fila se resalta en <strong>verde</strong>.
-      </p>
-
-      {/* Toolbar */}
-      <div className="toolbar">
+      {/* ====== TOOLBAR avanzada ====== */}
+      <section className="toolbar">
+        {/* fila 1: buscador + categoría + ordenar */}
         <div className="toolbar-row">
-          {/* Buscador */}
-          <div className="toolbar-group" style={{ flex: 1, minWidth: 220 }}>
-            <label className="toolbar-label">Buscar</label>
-            <div style={{ display:'flex', gap:8 }}>
-              <input
-                className="toolbar-input"
-                value={query}
-                onChange={(e)=>setQuery(e.target.value)}
-                placeholder="Ej: arroz, aceite, papel, sal…"
-                aria-label="Buscar productos"
-                style={{ flex: 1 }}
-              />
-              {query && (
-                <button
-                  className="chip chip-clear"
-                  onClick={()=>setQuery('')}
-                  aria-label="Limpiar búsqueda"
-                >
-                  Limpiar
-                </button>
-              )}
-            </div>
+          <div className="toolbar-group" style={{ flex: 1, minWidth: 240 }}>
+            <label className="toolbar-label" htmlFor="buscar">
+              Buscar
+            </label>
+            <input
+              id="buscar"
+              className="toolbar-input"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Ej: arroz, aceite, papel, sal…"
+            />
           </div>
 
-          {/* Orden */}
           <div className="toolbar-group">
-            <label className="toolbar-label">Ordenar por</label>
+            <label className="toolbar-label" htmlFor="categoria">
+              Categoría
+            </label>
             <select
+              id="categoria"
               className="toolbar-select"
-              value={sortBy}
-              onChange={(e)=>setSortBy(e.target.value)}
-              aria-label="Ordenar por precio"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
             >
-              <option value="none">— Sin ordenar —</option>
-              <option value="asc">Precio mínimo (menor a mayor)</option>
-              <option value="desc">Precio mínimo (mayor a menor)</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c === 'todas' ? 'Todas' : c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="toolbar-group">
+            <label className="toolbar-label" htmlFor="ordenar">
+              Ordenar
+            </label>
+            <select
+              id="ordenar"
+              className="toolbar-select"
+              value={order}
+              onChange={(e) => setOrder(e.target.value)}
+            >
+              {ORDER_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
-        {/* Filtro por tiendas */}
-        <div className="toolbar-group">
-          <label className="toolbar-label">Tiendas</label>
-          <div className="toolbar-chips">
-            {TIENDAS_BASE.map((t) => {
-              const active = selected.has(t);
+        {/* fila 2: chips tiendas + limpiar */}
+        <div className="toolbar-row" style={{ justifyContent: 'space-between' }}>
+          <div className="toolbar-chips" role="group" aria-label="Tiendas">
+            {STORE_ORDER.map((slug) => {
+              const on = activeStores[slug];
+              const label = STORE_META[slug]?.label ?? slug;
               return (
                 <button
-                  key={t}
-                  onClick={() => toggleTienda(t)}
-                  className={`chip ${active ? 'chip-active' : ''}`}
-                  aria-pressed={active}
+                  key={slug}
+                  type="button"
+                  className={`chip ${on ? 'chip-active' : ''}`}
+                  onClick={() => toggleStore(slug)}
+                  aria-pressed={on}
+                  title={on ? `Ocultar ${label}` : `Mostrar ${label}`}
                 >
-                  {TIENDA_LABEL[t] ?? t}
+                  {label}
                 </button>
               );
             })}
-            {selected.size > 0 && (
-              <button className="chip chip-clear" onClick={clearTiendas}>
-                Limpiar
-              </button>
-            )}
           </div>
+
+          <button type="button" className="chip chip-clear" onClick={clearFilters}>
+            Limpiar filtros
+          </button>
         </div>
-      </div>
 
-      {err && <p style={{color:'red', marginTop:8}}>Error: {err}</p>}
+        {/* fila 3: contador */}
+        <div className="toolbar-row" style={{ marginBottom: 0 }}>
+          <span className="muted">
+            {filteredSorted.length} producto
+            {filteredSorted.length === 1 ? '' : 's'} encontrados
+          </span>
+        </div>
+      </section>
 
-      {/* Tabla */}
-      <div style={{ overflowX:'auto', marginTop: 8 }}>
-        <table
-          style={{
-            width:'100%',
-            borderCollapse:'separate',
-            borderSpacing:0,
-            background:'#fff',
-            border:'1px solid #e5e7eb',
-            borderRadius:12
-          }}
-        >
+      {/* Errores */}
+      {err && (
+        <p style={{ color: 'red', marginTop: 8 }}>
+          Error al cargar datos: {err}
+        </p>
+      )}
+
+      {/* ====== TABLA ====== */}
+      <div style={{ overflowX: 'auto', marginTop: 10 }}>
+        <table>
           <thead>
-            <tr style={{ background:'#F3F4F6' }}>
-              <th style={thLeft}>Producto</th>
-              <th style={thLeft}>Formato</th>
-              {tiendasVisibles.map(t => (
-                <th
-                  key={t}
-                  style={thRight}
-                  aria-label={TIENDA_LABEL[t] ?? t}
-                >
-                  {(TIENDA_LABEL[t] ?? t)}
+            <tr>
+              <th>Producto</th>
+              <th>Formato</th>
+              {visibleStores.map((s) => (
+                <th key={s} style={{ textAlign: 'right', textTransform: 'capitalize' }}>
+                  {STORE_META[s]?.label ?? s}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody>
-            {productosProcesados.length === 0 && (
-              <tr>
-                <td colSpan={2 + tiendasVisibles.length} style={{ padding:16, color:'#6B7280', textAlign:'center' }}>
-                  No se encontraron productos {query ? `para “${query}”` : ''}.
-                </td>
+
+        <tbody>
+          {filteredSorted.length === 0 && (
+            <tr>
+              <td
+                colSpan={2 + visibleStores.length}
+                style={{ padding: 16, color: '#6B7280', textAlign: 'center' }}
+              >
+                No se encontraron productos para la búsqueda/filters actuales.
+              </td>
+            </tr>
+          )}
+
+          {filteredSorted.map(([nombre, info]) => {
+            const min = cheapestVisible(info.precios, visibleStores);
+            return (
+              <tr key={nombre}>
+                <td>{nombre}</td>
+                <td>{info.formato || '—'}</td>
+                {visibleStores.map((s) => {
+                  const val = info.precios[s];
+                  const isMin = min != null && val === min;
+                  return (
+                    <td
+                      key={s}
+                      style={{
+                        textAlign: 'right',
+                        fontWeight: isMin ? 700 : 500,
+                        background: isMin ? '#e6f7e6' : 'transparent',
+                        color: isMin ? '#006400' : '#111827',
+                      }}
+                    >
+                      {val != null ? CLP(val) : '—'}
+                    </td>
+                  );
+                })}
               </tr>
-            )}
-
-            {productosProcesados.map(([nombre, info]) => {
-              const min = minPrecio(info.precios, tiendasVisibles);
-
-              return (
-                <tr key={nombre}>
-                  <td style={{ ...td, fontWeight:700 }}>{nombre}</td>
-                  <td style={td}>{info.formato}</td>
-                  {tiendasVisibles.map(t => {
-                    const val = info.precios[t];
-                    const isMin = min != null && val === min;
-                    return (
-                      <td
-                        key={t}
-                        style={{
-                          ...tdRight,
-                          fontWeight: isMin ? 800 : 500,
-                          background: isMin ? '#DCFCE7' : '#fff',
-                          color: isMin ? '#166534' : '#111827',
-                        }}
-                      >
-                        {val != null ? fmt(val) : '—'}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
+            );
+          })}
+        </tbody>
         </table>
       </div>
 
-      <p className="muted" style={{ marginTop:12 }}>
-        <small>Nota: precios referenciales en este MVP (pueden variar según tienda y ciudad).</small>
+      <p className="muted" style={{ marginTop: 14 }}>
+        Nota: precios referenciales del MVP. Pueden variar por tienda y ciudad.
       </p>
     </main>
   );
 }
-
-/* ===== Estilos inline simples para la tabla ===== */
-const thLeft = {
-  textAlign:'left', borderBottom:'1px solid #e5e7eb', padding:'10px 12px', fontWeight:800, color:'#111827', whiteSpace:'nowrap'
-};
-const thRight = {
-  textAlign:'right', borderBottom:'1px solid #e5e7eb', padding:'10px 12px', fontWeight:800, color:'#111827', whiteSpace:'nowrap'
-};
-const td = { borderTop:'1px solid #eee', padding:'10px 12px', verticalAlign:'top', fontWeight:500, color:'#111827' };
-const tdRight = { ...td, textAlign:'right' };

@@ -59,7 +59,8 @@ html, body {
 /* =========================================================
    HERO / BANNER (Azul)
    - Botón siempre visible
-   - Título + bolsa en una línea (ajusta tamaño en móvil)
+   - Badge centrado en su propia línea
+   - Título + 💰 en una sola línea (si cabe)
    ========================================================= */
 .hero{
   background: linear-gradient(135deg, #1E3A8A, #2563EB);
@@ -73,21 +74,29 @@ html, body {
 @keyframes fadeInUp { from{opacity:0; transform:translateY(24px);} to{opacity:1; transform:translateY(0);} }
 
 .hero-center{ text-align:center; max-width: 760px; margin: 0 auto; }
+
+/* ✅ FIX: el badge siempre centrado y en su propia línea */
 .hero-badge{
   background: rgba(255,255,255,.18); color:#fff;
-  display:inline-flex; align-items:center; gap:10px;
+  display: inline-flex; align-items:center; gap:10px;
   padding: 10px 18px; border-radius:9999px; font-weight:700;
-  box-shadow:0 2px 8px rgba(255,255,255,.15); margin-bottom:18px;
+  box-shadow:0 2px 8px rgba(255,255,255,.15); margin: 0 auto 18px auto;  /* centrado */
+  width: max-content;  /* calcula ancho al contenido */
 }
 .hero-cart{ font-size:1.4rem; }
 
+/* ✅ FIX: el título es bloque para caer a otra línea (badge arriba, título abajo) */
 .hero-title{
-  display:inline-flex; align-items:center; justify-content:center; gap:10px;
+  display:block;              /* <--- aquí el cambio clave */
   font-weight:800; color:#fff; margin: 4px 0 8px 0;
   font-size: clamp(1.5rem, 4.2vw, 2.2rem);
-  white-space: nowrap;  /* intentamos mantener una línea */
+  white-space: nowrap;        /* intentamos mantener una línea */
 }
-.hero-money{ font-size: 1.6rem; }
+.hero-title .hero-money{
+  font-size: 1.6rem;
+  margin-left: 10px;
+  vertical-align: middle;
+}
 
 .hero-text{
   color:#fff; opacity:.95; margin: 10px auto 22px auto;
@@ -106,8 +115,8 @@ html, body {
 /* Ajustes móviles para mantener TODO visible */
 @media (max-width: 420px){
   .hero{ padding: 36px 16px; }
-  .hero-title{ font-size: 1.55rem; gap:8px; }
-  .hero-money{ font-size: 1.4rem; }
+  .hero-title{ font-size: 1.55rem; }
+  .hero-title .hero-money{ font-size: 1.4rem; }
   .hero-btn{ padding: 10px 22px; font-size: .95rem; }
 }
 

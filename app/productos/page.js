@@ -27,10 +27,10 @@ const CLP = (v) =>
 
 /* Mapa de tiendas (slug → etiqueta bonita) */
 const STORE_META = {
-  'lider': { label: 'Líder' },
-  'jumbo': { label: 'Jumbo' },
-  'unimarc': { label: 'Unimarc' },
-  'santa-isabel': { label: 'Santa Isabel' },
+  lider: { label: 'Líder' },
+  jumbo: { label: 'Jumbo' },
+  unimarc: { label: 'Unimarc' },
+  'santa-isabel': { label: 'Santa Isabel' }
 };
 const STORE_ORDER = ['lider', 'jumbo', 'unimarc', 'santa-isabel'];
 
@@ -39,7 +39,7 @@ const ORDER_OPTIONS = [
   { id: 'price-asc', label: 'Precio (Menor a Mayor) ↑' },
   { id: 'price-desc', label: 'Precio (Mayor a Menor) ↓' },
   { id: 'name-asc', label: 'Nombre A → Z' },
-  { id: 'name-desc', label: 'Nombre Z → A' },
+  { id: 'name-desc', label: 'Nombre Z → A' }
 ];
 
 export default function Productos() {
@@ -48,6 +48,7 @@ export default function Productos() {
      ----------------------------- */
   const [rows, setRows] = useState([]);
   const [err, setErr] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('todas');
@@ -58,14 +59,20 @@ export default function Productos() {
     lider: true,
     jumbo: true,
     unimarc: true,
-    'santa-isabel': true,
+    'santa-isabel': true
   });
+
+  /* Paginación */
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   /* -----------------------------
      Carga de datos desde Supabase
      ----------------------------- */
   useEffect(() => {
     (async () => {
+      setLoading(true);
+      setErr(null);
       const { data, error } = await supabase
         .from('product_price_matrix')
         .select(
@@ -75,6 +82,7 @@ export default function Productos() {
 
       if (error) setErr(error.message);
       else setRows(data ?? []);
+      setLoading(false);
     })();
   }, []);
 
@@ -100,7 +108,7 @@ export default function Productos() {
         map[key] = {
           categoria: r.categoria,
           formato: r.formato,
-          precios: {}, // { slug: precio }
+          precios: {} // { slug: precio }
         };
       }
       map[key].precios[r.tienda_slug] = r.precio_clp;
@@ -174,9 +182,22 @@ export default function Productos() {
       lider: true,
       jumbo: true,
       unimarc: true,
-      'santa-isabel': true,
+      'santa-isabel': true
     });
   };
+
+  /* Resetear a página 1 cuando cambian filtros o tamaño */
+  useEffect(() => {
+    setPage(1);
+  }, [q, category, order, activeStores, pageSize]);
+
+  /* Slice de paginación */
+  const total = filteredSorted.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const pageSafe = Math.min(page, totalPages);
+  const start = (pageSafe - 1) * pageSize;
+  const end = start + pageSize;
+  const pageItems = filteredSorted.slice(start, end);
 
   /* -----------------------------
      Render
@@ -188,8 +209,8 @@ export default function Productos() {
       </h1>
 
       {/* ====== TOOLBAR avanzada ====== */}
-      <section className="toolbar">
-        {/* fila 1: buscador + categoría + ordenar */}
+      <section className="toolbar" role="region" aria-label="Filtros de productos">
+        {/* fila 1: buscador + categoría + ordenar + filas/página */}
         <div className="toolbar-row">
           <div className="toolbar-group" style={{ flex: 1, minWidth: 240 }}>
             <label className="toolbar-label" htmlFor="buscar">
@@ -231,11 +252,27 @@ export default function Productos() {
               className="toolbar-select"
               value={order}
               onChange={(e) => setOrder(e.target.value)}
+              aria-label="Ordenar por"
             >
               {ORDER_OPTIONS.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.label}
                 </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="toolbar-group">
+            <label className="toolbar-label" htmlFor="pagesize">Filas por página</label>
+            <select
+              id="pagesize"
+              className="toolbar-select"
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              aria-label="Filas por página"
+            >
+              {[5, 10, 15, 20, 25, 50].map((n) => (
+                <option key={n} value={n}>{n}</option>
               ))}
             </select>
           </div>
@@ -270,14 +307,13 @@ export default function Productos() {
         {/* fila 3: contador */}
         <div className="toolbar-row" style={{ marginBottom: 0 }}>
           <span className="muted">
-            {filteredSorted.length} producto
-            {filteredSorted.length === 1 ? '' : 's'} encontrados
+            {total} producto{total === 1 ? '' : 's'} encontrados
           </span>
         </div>
       </section>
 
       {/* Errores */}
-      {err && (
+      {!loading && err && (
         <p style={{ color: 'red', marginTop: 8 }}>
           Error al cargar datos: {err}
         </p>
@@ -285,60 +321,138 @@ export default function Productos() {
 
       {/* ====== TABLA ====== */}
       <div style={{ overflowX: 'auto', marginTop: 10 }}>
-        <table>
+        <table aria-label="Tabla comparativa de precios">
           <thead>
             <tr>
               <th>Producto</th>
               <th>Formato</th>
               {visibleStores.map((s) => (
-                <th key={s} style={{ textAlign: 'right', textTransform: 'capitalize' }}>
+                <th
+                  key={s}
+                  style={{
+                    textAlign: 'right',
+                    textTransform: 'capitalize',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
                   {STORE_META[s]?.label ?? s}
                 </th>
               ))}
             </tr>
           </thead>
 
-        <tbody>
-          {filteredSorted.length === 0 && (
-            <tr>
-              <td
-                colSpan={2 + visibleStores.length}
-                style={{ padding: 16, color: '#6B7280', textAlign: 'center' }}
-              >
-                No se encontraron productos para la búsqueda/filters actuales.
-              </td>
-            </tr>
-          )}
-
-          {filteredSorted.map(([nombre, info]) => {
-            const min = cheapestVisible(info.precios, visibleStores);
-            return (
-              <tr key={nombre}>
-                <td>{nombre}</td>
-                <td>{info.formato || '—'}</td>
-                {visibleStores.map((s) => {
-                  const val = info.precios[s];
-                  const isMin = min != null && val === min;
-                  return (
-                    <td
-                      key={s}
+          <tbody>
+            {/* Skeleton de carga */}
+            {loading &&
+              [...Array(pageSize)].map((_, i) => (
+                <tr key={`sk-${i}`} aria-hidden="true">
+                  <td colSpan={2} style={{ padding: 12 }}>
+                    <div
                       style={{
-                        textAlign: 'right',
-                        fontWeight: isMin ? 700 : 500,
-                        background: isMin ? '#e6f7e6' : 'transparent',
-                        color: isMin ? '#006400' : '#111827',
+                        height: 14,
+                        width: '60%',
+                        background: '#eef2f7',
+                        borderRadius: 6
                       }}
-                    >
-                      {val != null ? CLP(val) : '—'}
+                    />
+                  </td>
+                  {visibleStores.map((s) => (
+                    <td key={`sk-${i}-${s}`} style={{ textAlign: 'right', padding: 12 }}>
+                      <div
+                        style={{
+                          height: 14,
+                          width: 70,
+                          marginLeft: 'auto',
+                          background: '#eef2f7',
+                          borderRadius: 6
+                        }}
+                      />
                     </td>
-                  );
-                })}
+                  ))}
+                </tr>
+              ))}
+
+            {/* Sin resultados */}
+            {!loading && total === 0 && (
+              <tr>
+                <td
+                  colSpan={2 + visibleStores.length}
+                  style={{ padding: 16, color: '#6B7280', textAlign: 'center' }}
+                >
+                  No se encontraron productos para la búsqueda/filtros actuales.
+                </td>
               </tr>
-            );
-          })}
-        </tbody>
+            )}
+
+            {/* Filas de la página */}
+            {!loading &&
+              pageItems.map(([nombre, info]) => {
+                const min = cheapestVisible(info.precios, visibleStores);
+                return (
+                  <tr key={nombre}>
+                    <td>{nombre}</td>
+                    <td>{info.formato || '—'}</td>
+                    {visibleStores.map((s) => {
+                      const val = info.precios[s];
+                      const isMin = min != null && val === min;
+                      return (
+                        <td
+                          key={s}
+                          style={{
+                            textAlign: 'right',
+                            fontWeight: isMin ? 700 : 500,
+                            background: isMin ? '#e6f7e6' : 'transparent',
+                            color: isMin ? '#006400' : '#111827'
+                          }}
+                        >
+                          {val != null ? CLP(val) : '—'}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+          </tbody>
         </table>
       </div>
+
+      {/* Paginación */}
+      {!loading && total > 0 && (
+        <nav
+          className="toolbar-row"
+          style={{ justifyContent: 'space-between', marginTop: 16 }}
+          aria-label="Paginación"
+        >
+          <span className="muted">
+            Mostrando <strong>{Math.min(end, total)}</strong> de{' '}
+            <strong>{total}</strong> productos
+          </span>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className="chip"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={pageSafe === 1}
+              aria-label="Página anterior"
+              style={{ opacity: pageSafe === 1 ? 0.5 : 1 }}
+            >
+              ← Anterior
+            </button>
+            <div className="chip" aria-current="page">
+              Página {pageSafe} / {totalPages}
+            </div>
+            <button
+              className="chip"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={pageSafe === totalPages}
+              aria-label="Página siguiente"
+              style={{ opacity: pageSafe === totalPages ? 0.5 : 1 }}
+            >
+              Siguiente →
+            </button>
+          </div>
+        </nav>
+      )}
 
       <p className="muted" style={{ marginTop: 14 }}>
         Nota: precios referenciales del MVP. Pueden variar por tienda y ciudad.

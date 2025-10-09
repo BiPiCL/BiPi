@@ -3,63 +3,65 @@ export default function Home() {
   const CONTACT = process.env.NEXT_PUBLIC_BIPI_CONTACT || 'bipichile2025@gmail.com';
 
   return (
-    <main>
-      {/* Título superior */}
-      <h1 style={{
-        fontSize: '2rem',
-        fontWeight: '800',
-        color: '#1E3A8A',
-        textAlign: 'center',
-        marginBottom: '30px'
-      }}>
-        Bienvenido a {APP}
-      </h1>
+    <>
+      {/* TÍTULO */}
+      <h1 className="page-title">Bienvenido a {APP}</h1>
 
-      {/* Banner principal */}
+      {/* PÁRRAFO JUSTIFICADO (antes del banner) */}
+      <p className="lead">
+        Tu comparador de precios de supermercados en Chile. Compara productos esenciales como arroz,
+        aceite, fideos, papel higiénico y más entre Líder, Jumbo, Unimarc y Santa Isabel.
+      </p>
+
+      {/* BANNER (azul). Botón siempre visible. Título en una línea con bolsa 💰 */}
       <section className="hero">
         <div className="hero-center">
           <div className="hero-badge">
-            <span style={{ fontSize: '1.7rem' }}>🛒</span>
-            <strong style={{ fontSize: '1.3rem' }}>{APP}</strong>
+            <span className="hero-cart">🛒</span>
+            <strong>{APP}</strong>
           </div>
-          <h1>Compara precios y ahorra 💰</h1>
-          <p>
+
+          {/* Título + bolsa en una línea; se ajusta en móviles */}
+          <h2 className="hero-title">
+            <span>Compara precios y ahorra</span>
+            <span className="hero-money" aria-hidden>💰</span>
+          </h2>
+
+          {/* Párrafo justificado dentro del banner */}
+          <p className="hero-text">
             Encuentra los mejores precios de supermercados en la Región del Biobío — todo en un solo lugar.
           </p>
+
           <a href="/productos" className="hero-btn">
             🛍️ Ver productos
           </a>
         </div>
       </section>
 
-      {/* Texto informativo */}
-      <section style={{ textAlign: 'center', marginTop: '40px' }}>
-        <p style={{ fontSize: '1rem', color: '#374151', maxWidth: '700px', margin: '0 auto' }}>
-          Tu comparador de precios de supermercados en Chile. Compara productos esenciales
-          como arroz, aceite, fideos, papel higiénico y más entre Lider, Jumbo, Unimarc y Santa Isabel.
-        </p>
-
-        <h3 style={{ fontWeight: '700', marginTop: '30px' }}>
-          Tiendas conectadas a {APP}:
-        </h3>
-
-        <ul style={{
-          listStyleType: 'disc',
-          textAlign: 'left',
-          margin: '20px auto',
-          paddingLeft: '40px',
-          maxWidth: '300px'
-        }}>
-          <li><a href="https://www.jumbo.cl" target="_blank" rel="noopener noreferrer">Jumbo</a> <span style={{ color: '#6b7280' }}>(jumbo)</span></li>
-          <li><a href="https://www.lider.cl" target="_blank" rel="noopener noreferrer">Líder</a> <span style={{ color: '#6b7280' }}>(lider)</span></li>
-          <li><a href="https://www.santaisabel.cl" target="_blank" rel="noopener noreferrer">Santa Isabel</a> <span style={{ color: '#6b7280' }}>(santa-isabel)</span></li>
-          <li><a href="https://www.unimarc.cl" target="_blank" rel="noopener noreferrer">Unimarc</a> <span style={{ color: '#6b7280' }}>(unimarc)</span></li>
+      {/* LISTA DE TIENDAS (alineada a la izquierda) */}
+      <section className="content-left">
+        <h3 className="section-title">Tiendas conectadas a {APP}:</h3>
+        <ul className="stores">
+          <li>
+            <a href="https://www.jumbo.cl" target="_blank" rel="noopener noreferrer">Jumbo</a>
+            <span className="muted"> (jumbo)</span>
+          </li>
+          <li>
+            <a href="https://www.lider.cl" target="_blank" rel="noopener noreferrer">Líder</a>
+            <span className="muted"> (lider)</span>
+          </li>
+          <li>
+            <a href="https://www.santaisabel.cl" target="_blank" rel="noopener noreferrer">Santa Isabel</a>
+            <span className="muted"> (santa-isabel)</span>
+          </li>
+          <li>
+            <a href="https://www.unimarc.cl" target="_blank" rel="noopener noreferrer">Unimarc</a>
+            <span className="muted"> (unimarc)</span>
+          </li>
         </ul>
 
-        <p style={{ color: '#6b7280', marginTop: '20px' }}>
-          Contacto: {CONTACT}
-        </p>
+        <p className="contact">Contacto: <a href={`mailto:${CONTACT}`}>{CONTACT}</a></p>
       </section>
-    </main>
+    </>
   );
 }

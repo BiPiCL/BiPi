@@ -1,21 +1,28 @@
-// components/Footer.jsx
-export default function Footer() {
-  return (
-    <footer className="w-full border-t bg-white">
-      <div className="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center justify-between gap-3 py-6 md:flex-row">
-          <p className="text-sm text-gray-500 text-center md:text-left">
-            © {new Date().getFullYear()} BiPi Chile — Comparador de precios
-          </p>
+// components/Header.jsx
+import Link from "next/link";
 
-          <a
-            href="mailto:bipichile2025@gmail.com"
-            className="text-sm hover:underline text-blue-600"
-          >
-            Contacto: bipichile2025@gmail.com
-          </a>
-        </div>
+export default function Header() {
+  return (
+    <header className="w-full bg-white border-b shadow-sm">
+      <div className="mx-auto flex max-w-screen-xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+        <Link href="/" className="flex items-center space-x-2">
+          <img
+            src="/logo-bipi.png"
+            alt="BiPi Chile"
+            className="h-9 w-9 rounded-full"
+          />
+          <span className="text-xl font-semibold text-blue-700">BiPi Chile</span>
+        </Link>
+
+        <nav className="flex space-x-6 text-gray-700 font-medium">
+          <Link href="/" className="hover:text-blue-600">
+            Inicio
+          </Link>
+          <Link href="/productos" className="hover:text-blue-600">
+            Productos
+          </Link>
+        </nav>
       </div>
-    </footer>
+    </header>
   );
 }

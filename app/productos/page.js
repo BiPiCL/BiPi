@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 /* ===========================
@@ -15,15 +15,9 @@ const supabase = createClient(
    Utilidades
    =========================== */
 const norm = (s = '') =>
-  s
-    .toString()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim();
+  s.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
-const CLP = (v) =>
-  typeof v === 'number' ? `$${Number(v).toLocaleString('es-CL')}` : '—';
+const CLP = (v) => (typeof v === 'number' ? `$${Number(v).toLocaleString('es-CL')}` : '—');
 
 /* Mapa de tiendas (slug → etiqueta) */
 const STORE_META = {
@@ -42,14 +36,29 @@ const ORDER_OPTIONS = [
   { id: 'name-desc', label: 'Nombre Z → A' },
 ];
 
+/* Helpers URL <-> Estado */
+const parseBool = (v) => v === '1' || v === 'true';
+const encodeStores = (obj) => STORE_ORDER.map((s) => (obj[s] ? '1' : '0')).join('');
+const decodeStores = (str) => {
+  const flags = (str || '').padEnd(STORE_ORDER.length, '1').slice(0, STORE_ORDER.length);
+  const out = {};
+  STORE_ORDER.forEach((s, i) => (out[s] = flags[i] === '1'));
+  return out;
+};
+
 export default function Productos() {
+  /* -----------------------------
+     Estado base
+     ----------------------------- */
   const [rows, setRows] = useState([]);
   const [err, setErr] = useState(null);
 
+  // Filtros/orden
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('todas');
   const [order, setOrder] = useState('price-asc');
 
+  // Tiendas activas
   const [activeStores, setActiveStores] = useState({
     lider: true,
     jumbo: true,
@@ -57,11 +66,21 @@ export default function Productos() {
     'santa-isabel': true,
   });
 
+  // Controles plegables
   const [showStores, setShowStores] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showPageSize, setShowPageSize] = useState(false);
+
+  // Paginación simple (cortamos número de filas visibles)
   const [pageSize, setPageSize] = useState(25);
 
+  // Debounce para el buscador
+  const searchRef = useRef(q);
+  const debounceTimer = useRef(null);
+
+  /* -----------------------------
+     Cargar datos
+     ----------------------------- */
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase
@@ -76,14 +95,18 @@ export default function Productos() {
     })();
   }, []);
 
+  /* -----------------------------
+     Categorías únicas
+     ----------------------------- */
   const categories = useMemo(() => {
     const set = new Set();
-    rows.forEach((r) => {
-      if (r.categoria) set.add(r.categoria);
-    });
+    rows.forEach((r) => r.categoria && set.add(r.categoria));
     return ['todas', ...Array.from(set).sort((a, b) => a.localeCompare(b))];
   }, [rows]);
 
+  /* -----------------------------
+     Agrupar por producto
+     ----------------------------- */
   const productos = useMemo(() => {
     const map = {};
     rows.forEach((r) => {
@@ -96,16 +119,23 @@ export default function Productos() {
     return map;
   }, [rows]);
 
+  /* -----------------------------
+     Tiendas visibles (según chips)
+     ----------------------------- */
   const visibleStores = useMemo(() => {
     const list = STORE_ORDER.filter((slug) => activeStores[slug]);
-    return list.length ? list : STORE_ORDER;
+    return list.length ? list : STORE_ORDER; // si apagan todas, mostramos todas
   }, [activeStores]);
 
   const allSelected = STORE_ORDER.every((s) => activeStores[s]);
 
+  /* -----------------------------
+     Filtrar + ordenar
+     ----------------------------- */
   const qn = norm(q);
   const filteredSorted = useMemo(() => {
     let list = Object.entries(productos);
+
     if (qn) {
       list = list.filter(([nombre, info]) => {
         const n = norm(nombre);
@@ -113,9 +143,11 @@ export default function Productos() {
         return n.includes(qn) || c.includes(qn);
       });
     }
+
     if (category !== 'todas') {
       list = list.filter(([, info]) => info.categoria === category);
     }
+
     if (order === 'name-asc' || order === 'name-desc') {
       list.sort(([a], [b]) =>
         order === 'name-asc' ? a.localeCompare(b) : b.localeCompare(a)
@@ -129,16 +161,23 @@ export default function Productos() {
         return order === 'price-asc' ? va - vb : vb - va;
       });
     }
+
     return list;
   }, [productos, qn, category, order, visibleStores]);
 
   const pageItems = useMemo(() => filteredSorted.slice(0, pageSize), [filteredSorted, pageSize]);
 
+  /* -----------------------------
+     Precio mínimo visible
+     ----------------------------- */
   function cheapestVisible(precios, stores) {
     const vals = stores.map((s) => precios[s]).filter((v) => v != null);
     return vals.length ? Math.min(...vals) : null;
   }
 
+  /* -----------------------------
+     Acciones UI
+     ----------------------------- */
   const toggleStore = (slug) =>
     setActiveStores((prev) => ({ ...prev, [slug]: !prev[slug] }));
 
@@ -153,14 +192,74 @@ export default function Productos() {
     setQ('');
     setCategory('todas');
     setOrder('price-asc');
-    setActiveStores({
-      lider: true,
-      jumbo: true,
-      unimarc: true,
-      'santa-isabel': true,
-    });
+    setActiveStores({ lider: true, jumbo: true, unimarc: true, 'santa-isabel': true });
+    setPageSize(25);
   };
 
+  /* -----------------------------
+     Sincronización con URL (C.4)
+     ----------------------------- */
+
+  // 1) Leer URL al montar y precargar estado
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sp = new URLSearchParams(window.location.search);
+
+    const q0 = sp.get('q');
+    const cat0 = sp.get('cat');
+    const ord0 = sp.get('ord');
+    const size0 = sp.get('size');
+    const stores0 = sp.get('stores'); // ej: "1101" (lider/jumbo/unimarc/santa-isabel)
+
+    if (q0 !== null) setQ(q0);
+    if (cat0 !== null) setCategory(cat0);
+    if (ord0 !== null) setOrder(ord0);
+    if (size0 !== null && !Number.isNaN(Number(size0))) setPageSize(Number(size0));
+    if (stores0) setActiveStores(decodeStores(stores0));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 2) Actualizar URL cuando cambie el estado (con debounce para q)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // usamos searchRef + debounce: actualiza cuando el usuario “termina” de escribir
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      searchRef.current = q;
+
+      const sp = new URLSearchParams(window.location.search);
+      q ? sp.set('q', q) : sp.delete('q');
+      category && category !== 'todas' ? sp.set('cat', category) : sp.delete('cat');
+      order && order !== 'price-asc' ? sp.set('ord', order) : sp.delete('ord');
+      pageSize !== 25 ? sp.set('size', String(pageSize)) : sp.delete('size');
+
+      const storesEncoded = encodeStores(activeStores);
+      storesEncoded !== '1111' ? sp.set('stores', storesEncoded) : sp.delete('stores');
+
+      const newUrl = `${window.location.pathname}?${sp.toString()}`;
+      window.history.replaceState(null, '', newUrl);
+    }, 250);
+
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, [q, category, order, pageSize, activeStores]);
+
+  // Botón “Compartir vista”
+  const handleShare = async () => {
+    if (typeof window === 'undefined') return;
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      alert('Enlace copiado. ¡Puedes compartir esta vista!');
+    } catch {
+      alert('No se pudo copiar el enlace.');
+    }
+  };
+
+  /* -----------------------------
+     Exportar (CSV/Excel minimal)
+     ----------------------------- */
   function toCSV(rowsArr) {
     const headers = ['Producto', 'Formato', ...visibleStores.map((s) => STORE_META[s]?.label ?? s)];
     const lines = [headers.join(',')];
@@ -194,7 +293,7 @@ export default function Productos() {
     const csv = toCSV(pageItems);
     try {
       await navigator.clipboard.writeText(csv);
-      alert('Tabla copiada al portapapeles (formato CSV).');
+      alert('Tabla copiada (CSV).');
     } catch {
       alert('No se pudo copiar. Permite el acceso al portapapeles.');
     }
@@ -205,6 +304,9 @@ export default function Productos() {
     downloadBlob(csv, 'bipi_productos.csv', 'text/csv;charset=utf-8;');
   };
 
+  /* -----------------------------
+     Render
+     ----------------------------- */
   return (
     <main className="container" style={{ paddingTop: 18, paddingBottom: 24 }}>
       <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>
@@ -254,7 +356,7 @@ export default function Productos() {
           </div>
         </div>
 
-        {/* === FILA 2 === */}
+        {/* === FILA 2 (todo alineado) === */}
         <div className="toolbar-row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           {/* Tiendas (sin label encima) */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -268,11 +370,7 @@ export default function Productos() {
 
             {showStores && (
               <div className="toolbar-chips" style={{ width: '100%', marginTop: 8 }}>
-                <button
-                  type="button"
-                  className="chip"
-                  onClick={toggleAllStores}
-                >
+                <button type="button" className="chip" onClick={toggleAllStores}>
                   {allSelected ? 'Quitar todas' : 'Seleccionar todas'}
                 </button>
 
@@ -295,8 +393,9 @@ export default function Productos() {
             )}
           </div>
 
-          {/* Exportar y demás acciones */}
+          {/* Acciones derechas */}
           <div className="toolbar-actions">
+            {/* Filas */}
             <button
               type="button"
               className="chip"
@@ -316,6 +415,7 @@ export default function Productos() {
               </select>
             )}
 
+            {/* Exportar */}
             <button
               type="button"
               className="chip"
@@ -323,7 +423,6 @@ export default function Productos() {
             >
               {`Exportar ${showExport ? '▴' : '▾'}`}
             </button>
-
             {showExport && (
               <div className="toolbar-actions">
                 <button type="button" className="chip" onClick={handleCopyTable}>Copiar</button>
@@ -332,12 +431,19 @@ export default function Productos() {
               </div>
             )}
 
+            {/* Compartir */}
+            <button type="button" className="chip" onClick={handleShare} title="Copiar enlace de esta vista">
+              Compartir vista
+            </button>
+
+            {/* Limpiar */}
             <button type="button" className="chip chip-clear" onClick={clearFilters}>
               Limpiar filtros
             </button>
           </div>
         </div>
 
+        {/* === FILA 3 === */}
         <div className="toolbar-row" style={{ marginBottom: 0 }}>
           <span className="muted">
             {filteredSorted.length} producto{filteredSorted.length === 1 ? '' : 's'} encontrados
@@ -345,6 +451,7 @@ export default function Productos() {
         </div>
       </section>
 
+      {/* === TABLA === */}
       <div style={{ overflowX: 'auto', marginTop: 10 }}>
         <table>
           <thead>
@@ -366,6 +473,7 @@ export default function Productos() {
                 </td>
               </tr>
             )}
+
             {pageItems.map(([nombre, info]) => {
               const min = cheapestVisible(info.precios, visibleStores);
               return (

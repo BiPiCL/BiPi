@@ -351,6 +351,22 @@ strong {
   color: #374151;
 }
 
+/* === NUEVO: Alineación limpia para grupos de botones === */
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* === NUEVO: Ajuste responsive para botones en pantallas pequeñas === */
+@media (max-width: 480px) {
+  .toolbar-actions .chip {
+    padding: 8px 10px;
+    font-size: 0.9rem;
+  }
+}
+
 /* =========================================================
    TABLAS GENERALES (productos)
    ========================================================= */

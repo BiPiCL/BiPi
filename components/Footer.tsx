@@ -1,4 +1,4 @@
-// components/Footer.tsx
+// components/Footer.jsx
 export default function Footer() {
   return (
     <footer className="w-full border-t bg-white">

@@ -1,7 +1,7 @@
 // app/layout.js
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer"; // Asegúrate de tener components/Footer.jsx o .tsx
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 export const metadata = {
   title: "BiPi Chile — Comparador de precios",

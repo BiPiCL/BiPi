@@ -36,8 +36,8 @@ const STORE_ORDER = ['lider', 'jumbo', 'unimarc', 'santa-isabel'];
 
 /* Opciones de orden */
 const ORDER_OPTIONS = [
-  { id: 'price-asc', label: 'Precio más bajo ↑' },
-  { id: 'price-desc', label: 'Precio más bajo ↓' },
+  { id: 'price-asc', label: 'Precio (Menor a Mayor) ↑' },
+  { id: 'price-desc', label: 'Precio (Mayor a Menor) ↓' },
   { id: 'name-asc', label: 'Nombre A → Z' },
   { id: 'name-desc', label: 'Nombre Z → A' },
 ];

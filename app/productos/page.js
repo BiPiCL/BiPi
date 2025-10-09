@@ -43,9 +43,6 @@ const ORDER_OPTIONS = [
 ];
 
 export default function Productos() {
-  /* -----------------------------
-     Estado de datos y filtros
-     ----------------------------- */
   const [rows, setRows] = useState([]);
   const [err, setErr] = useState(null);
 
@@ -53,7 +50,6 @@ export default function Productos() {
   const [category, setCategory] = useState('todas');
   const [order, setOrder] = useState('price-asc');
 
-  /* Tiendas activas (todas activas por defecto) */
   const [activeStores, setActiveStores] = useState({
     lider: true,
     jumbo: true,
@@ -61,17 +57,11 @@ export default function Productos() {
     'santa-isabel': true,
   });
 
-  /* NUEVO: colapsable de tiendas */
   const [showStores, setShowStores] = useState(false);
-
-  /* NUEVO: toggles de exportación y filas/por página */
   const [showExport, setShowExport] = useState(false);
   const [showPageSize, setShowPageSize] = useState(false);
   const [pageSize, setPageSize] = useState(25);
 
-  /* -----------------------------
-     Carga de datos desde Supabase
-     ----------------------------- */
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase
@@ -86,9 +76,6 @@ export default function Productos() {
     })();
   }, []);
 
-  /* -----------------------------
-     Derivados: categorías únicas
-     ----------------------------- */
   const categories = useMemo(() => {
     const set = new Set();
     rows.forEach((r) => {
@@ -97,44 +84,28 @@ export default function Productos() {
     return ['todas', ...Array.from(set).sort((a, b) => a.localeCompare(b))];
   }, [rows]);
 
-  /* -----------------------------
-     Agrupar filas por producto
-     ----------------------------- */
   const productos = useMemo(() => {
     const map = {};
     rows.forEach((r) => {
       const key = r.producto;
       if (!map[key]) {
-        map[key] = {
-          categoria: r.categoria,
-          formato: r.formato,
-          precios: {},
-        };
+        map[key] = { categoria: r.categoria, formato: r.formato, precios: {} };
       }
       map[key].precios[r.tienda_slug] = r.precio_clp;
     });
     return map;
   }, [rows]);
 
-  /* -----------------------------
-     Tiendas visibles (chips)
-     ----------------------------- */
   const visibleStores = useMemo(() => {
     const list = STORE_ORDER.filter((slug) => activeStores[slug]);
     return list.length ? list : STORE_ORDER;
   }, [activeStores]);
 
-  /* Saber si todas las tiendas están seleccionadas */
   const allSelected = STORE_ORDER.every((s) => activeStores[s]);
 
-  /* -----------------------------
-     Filtrar + ordenar
-     ----------------------------- */
   const qn = norm(q);
   const filteredSorted = useMemo(() => {
     let list = Object.entries(productos);
-
-    // Filtro buscador
     if (qn) {
       list = list.filter(([nombre, info]) => {
         const n = norm(nombre);
@@ -142,19 +113,14 @@ export default function Productos() {
         return n.includes(qn) || c.includes(qn);
       });
     }
-
-    // Filtro categoría
     if (category !== 'todas') {
       list = list.filter(([, info]) => info.categoria === category);
     }
-
-    // Orden
     if (order === 'name-asc' || order === 'name-desc') {
       list.sort(([a], [b]) =>
         order === 'name-asc' ? a.localeCompare(b) : b.localeCompare(a)
       );
     } else {
-      // Orden por precio
       list.sort(([, A], [, B]) => {
         const minA = cheapestVisible(A.precios, visibleStores);
         const minB = cheapestVisible(B.precios, visibleStores);
@@ -163,23 +129,19 @@ export default function Productos() {
         return order === 'price-asc' ? va - vb : vb - va;
       });
     }
-
     return list;
   }, [productos, qn, category, order, visibleStores]);
 
   const pageItems = useMemo(() => filteredSorted.slice(0, pageSize), [filteredSorted, pageSize]);
 
-  /* Precio mínimo visible */
   function cheapestVisible(precios, stores) {
     const vals = stores.map((s) => precios[s]).filter((v) => v != null);
     return vals.length ? Math.min(...vals) : null;
   }
 
-  /* Toggle chip */
   const toggleStore = (slug) =>
     setActiveStores((prev) => ({ ...prev, [slug]: !prev[slug] }));
 
-  /* Seleccionar o quitar todas dinámico */
   const toggleAllStores = () => {
     const newState = !allSelected;
     const updated = {};
@@ -199,9 +161,6 @@ export default function Productos() {
     });
   };
 
-  /* -----------------------------
-     Exportar (CSV/Excel)
-     ----------------------------- */
   function toCSV(rowsArr) {
     const headers = ['Producto', 'Formato', ...visibleStores.map((s) => STORE_META[s]?.label ?? s)];
     const lines = [headers.join(',')];
@@ -246,9 +205,6 @@ export default function Productos() {
     downloadBlob(csv, 'bipi_productos.csv', 'text/csv;charset=utf-8;');
   };
 
-  /* -----------------------------
-     Render
-     ----------------------------- */
   return (
     <main className="container" style={{ paddingTop: 18, paddingBottom: 24 }}>
       <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>
@@ -299,50 +255,47 @@ export default function Productos() {
         </div>
 
         {/* === FILA 2 === */}
-        <div className="toolbar-row" style={{ justifyContent: 'space-between' }}>
-          {/* Tiendas */}
-          <div className="toolbar-group" style={{ flex: 1, minWidth: 240 }}>
-            <label className="toolbar-label">Tiendas</label>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <button
-                type="button"
-                className="chip"
-                onClick={() => setShowStores((s) => !s)}
-              >
-                {`Tiendas (${STORE_ORDER.length}) ${showStores ? '▴' : '▾'}`}
-              </button>
+        <div className="toolbar-row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Tiendas (sin label encima) */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              type="button"
+              className="chip"
+              onClick={() => setShowStores((s) => !s)}
+            >
+              {`Tiendas (${STORE_ORDER.length}) ${showStores ? '▴' : '▾'}`}
+            </button>
 
-              {showStores && (
-                <div className="toolbar-chips" style={{ width: '100%', marginTop: 8 }}>
-                  <button
-                    type="button"
-                    className="chip"
-                    onClick={toggleAllStores}
-                  >
-                    {allSelected ? 'Quitar todas' : 'Seleccionar todas'}
-                  </button>
+            {showStores && (
+              <div className="toolbar-chips" style={{ width: '100%', marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="chip"
+                  onClick={toggleAllStores}
+                >
+                  {allSelected ? 'Quitar todas' : 'Seleccionar todas'}
+                </button>
 
-                  {STORE_ORDER.map((slug) => {
-                    const on = activeStores[slug];
-                    const label = STORE_META[slug]?.label ?? slug;
-                    return (
-                      <button
-                        key={slug}
-                        type="button"
-                        className={`chip ${on ? 'chip-active' : ''}`}
-                        onClick={() => toggleStore(slug)}
-                        aria-pressed={on}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                {STORE_ORDER.map((slug) => {
+                  const on = activeStores[slug];
+                  const label = STORE_META[slug]?.label ?? slug;
+                  return (
+                    <button
+                      key={slug}
+                      type="button"
+                      className={`chip ${on ? 'chip-active' : ''}`}
+                      onClick={() => toggleStore(slug)}
+                      aria-pressed={on}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Exportación + filas */}
+          {/* Exportar y demás acciones */}
           <div className="toolbar-actions">
             <button
               type="button"
@@ -385,7 +338,6 @@ export default function Productos() {
           </div>
         </div>
 
-        {/* === FILA 3 === */}
         <div className="toolbar-row" style={{ marginBottom: 0 }}>
           <span className="muted">
             {filteredSorted.length} producto{filteredSorted.length === 1 ? '' : 's'} encontrados
@@ -393,7 +345,6 @@ export default function Productos() {
         </div>
       </section>
 
-      {/* === TABLA === */}
       <div style={{ overflowX: 'auto', marginTop: 10 }}>
         <table>
           <thead>

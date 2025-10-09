@@ -6,15 +6,18 @@ import Footer from "../components/Footer";
 export const metadata = {
   title: "BiPi Chile — Comparador de precios",
   description:
-    "Compara precios de supermercados chilenos como Jumbo, Líder, Unimarc y Santa Isabel. Encuentra los mejores precios en productos esenciales.",
+    "Tu comparador de precios de supermercados en Chile. Compara productos esenciales entre Jumbo, Líder, Unimarc y Santa Isabel.",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="es">
-      <body className="min-h-screen flex flex-col bg-white font-inter antialiased">
+      <body className="min-h-screen flex flex-col bg-white font-inter">
+        {/* Encabezado fijo */}
         <Header />
+        {/* Contenido principal */}
         <main className="flex-1">{children}</main>
+        {/* Pie de página */}
         <Footer />
       </body>
     </html>

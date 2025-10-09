@@ -12,12 +12,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="es">
-      <body className="min-h-screen flex flex-col bg-white font-inter">
-        {/* Encabezado fijo */}
+      <body>
         <Header />
-        {/* Contenido principal */}
-        <main className="flex-1">{children}</main>
-        {/* Pie de página */}
+        <main>{children}</main>
         <Footer />
       </body>
     </html>

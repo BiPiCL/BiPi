@@ -1,22 +1,18 @@
-// app/layout.js
-import "./globals.css";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-
-export const metadata = {
-  title: "BiPi Chile — Comparador de precios",
-  description:
-    "Tu comparador de precios de supermercados en Chile. Compara productos esenciales entre Jumbo, Líder, Unimarc y Santa Isabel.",
-};
-
-export default function RootLayout({ children }) {
+export default function Home() {
   return (
-    <html lang="es">
-      <body>
-        <Header />
-        <main>{children}</main>
-        <Footer />
-      </body>
-    </html>
+    <section className="hero">
+      <div className="hero-center">
+        <div className="hero-badge">
+          <span>🛒</span> <strong>BiPi Chile</strong>
+        </div>
+        <h1>Encuentra los mejores precios en supermercados chilenos</h1>
+        <p>
+          Compara precios en tiempo real entre Lider, Jumbo, Unimarc y Santa Isabel.
+        </p>
+        <a href="/productos" className="hero-btn">
+          Ver productos →
+        </a>
+      </div>
+    </section>
   );
 }

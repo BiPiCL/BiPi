@@ -1,24 +1,21 @@
 {
   "name": "BiPi Chile",
-  "short_name": "BiPi",
+  "short_name": "BiPi Chile",
   "start_url": "/",
-  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#1E3A8A",
   "theme_color": "#1E3A8A",
-  "description": "Comparador de precios de supermercados en Chile.",
+  "description": "Compara precios de supermercados en Chile: Líder, Jumbo, Unimarc y Santa Isabel.",
   "icons": [
     {
       "src": "/icon.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     },
     {
       "src": "/apple-icon.png",
       "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     }
   ]
 }

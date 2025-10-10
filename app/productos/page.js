@@ -25,7 +25,7 @@ const norm = (s = '') =>
 const CLP = (v) =>
   typeof v === 'number' ? `$${Number(v).toLocaleString('es-CL')}` : '—';
 
-/* Mapa de tiendas (slug → etiqueta bonita) */
+/* Tiendas */
 const STORE_META = {
   lider: { label: 'Líder' },
   jumbo: { label: 'Jumbo' },
@@ -52,7 +52,6 @@ function download(filename, text) {
   el.click();
   document.body.removeChild(el);
 }
-
 function toCSV(headers, rows) {
   const esc = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
   const head = headers.map(esc).join(',');
@@ -70,15 +69,14 @@ export default function Productos() {
   /* -----------------------------
      Filtros y UI
      ----------------------------- */
-  // términos seleccionados (chips) y texto actual del input
-  const [terms, setTerms] = useState([]); // array de strings (minúscula normalizada)
+  // términos seleccionados: { raw:'Arroz grado 1', key:'arroz grado 1' }
+  const [terms, setTerms] = useState([]);
   const [q, setQ] = useState('');
 
   const [category, setCategory] = useState('todas');
   const [order, setOrder] = useState('price-asc');
   const [rowsLimit, setRowsLimit] = useState(25);
 
-  // chips de tiendas activas
   const [activeStores, setActiveStores] = useState({
     lider: true,
     jumbo: true,
@@ -86,20 +84,26 @@ export default function Productos() {
     'santa-isabel': true,
   });
 
-  // popovers (Exportar / Filas / Tiendas)
+  // popovers
   const [expOpen, setExpOpen] = useState(false);
   const [rowsOpen, setRowsOpen] = useState(false);
   const [storesOpen, setStoresOpen] = useState(false);
 
-  // toast de “copiado”
+  // autocomplete
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [highlight, setHighlight] = useState(-1);
+
+  // toast
   const [toast, setToast] = useState('');
 
   const exportRef = useRef(null);
   const rowsRef = useRef(null);
   const storesRef = useRef(null);
+  const suggestRef = useRef(null);
+  const inputRef = useRef(null);
 
   /* -----------------------------
-     Carga de datos desde Supabase
+     Carga de datos
      ----------------------------- */
   useEffect(() => {
     (async () => {
@@ -116,14 +120,19 @@ export default function Productos() {
   }, []);
 
   /* -----------------------------
-     Derivados: categorías únicas
+     Derivados: categorías y productos únicos
      ----------------------------- */
   const categories = useMemo(() => {
     const set = new Set();
-    rows.forEach((r) => {
-      if (r.categoria) set.add(r.categoria);
-    });
+    rows.forEach((r) => r.categoria && set.add(r.categoria));
     return ['todas', ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+  }, [rows]);
+
+  // lista única de nombres de producto (para sugerencias)
+  const allProductNames = useMemo(() => {
+    const set = new Set();
+    rows.forEach((r) => set.add(r.producto));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [rows]);
 
   /* -----------------------------
@@ -137,57 +146,82 @@ export default function Productos() {
         map[key] = {
           categoria: r.categoria,
           formato: r.formato,
-          precios: {}, // { slug: precio }
+          precios: {},
         };
       }
       map[key].precios[r.tienda_slug] = r.precio_clp;
     });
-    return map; // { nombre: {categoria, formato, precios} }
+    return map;
   }, [rows]);
 
   /* -----------------------------
-     Tiendas visibles (chips)
+     Tiendas visibles
      ----------------------------- */
   const visibleStores = useMemo(() => {
     const list = STORE_ORDER.filter((slug) => activeStores[slug]);
-    return list.length ? list : STORE_ORDER; // si apagan todas, mostramos todas
+    return list.length ? list : STORE_ORDER;
   }, [activeStores]);
 
   /* -----------------------------
-     Búsqueda múltiple (terms)
+     Términos (chips) + buscador
      ----------------------------- */
-  const addTerm = () => {
-    const t = norm(q);
-    if (t && !terms.includes(t)) {
-      setTerms((prev) => [...prev, t]);
+  const addTermFree = () => {
+    const t = q.trim();
+    const key = norm(t);
+    if (!t) return;
+    if (!terms.some((k) => k.key === key)) {
+      setTerms((prev) => [...prev, { raw: t, key }]);
     }
     setQ('');
+    setSuggestOpen(false);
+    setHighlight(-1);
   };
-  const removeTerm = (t) => setTerms((prev) => prev.filter((x) => x !== t));
+
+  const addTermExact = (rawValue) => {
+    const key = norm(rawValue);
+    if (!terms.some((k) => k.key === key)) {
+      setTerms((prev) => [...prev, { raw: rawValue, key }]);
+    }
+    setQ('');
+    setSuggestOpen(false);
+    setHighlight(-1);
+    inputRef.current?.focus();
+  };
+
+  const removeTerm = (key) => setTerms((prev) => prev.filter((x) => x.key !== key));
   const clearSearch = () => {
     setQ('');
+    setSuggestOpen(false);
     setTerms([]);
+    setHighlight(-1);
   };
+
+  // Sugerencias (hasta 10)
+  const suggestions = useMemo(() => {
+    const nq = norm(q);
+    if (!nq) return [];
+    const out = allProductNames.filter((name) => norm(name).includes(nq));
+    return out.slice(0, 10);
+  }, [q, allProductNames]);
 
   /* -----------------------------
      Filtrar + ordenar
      ----------------------------- */
   const filteredEntries = useMemo(() => {
-    let list = Object.entries(productos); // [ [nombre, info], ... ]
+    let list = Object.entries(productos);
 
-    // Filtro por términos (OR por término)
+    // Filtro: si hay chips, OR por cualquiera de los términos; si no, usa texto libre
     if (terms.length > 0) {
       list = list.filter(([nombre]) => {
         const n = norm(nombre);
-        return terms.some((t) => n.includes(t));
+        return terms.some((t) => n.includes(t.key));
       });
     } else if (q) {
-      // si no se han agregado términos, filtra por el texto libre
-      const qn = norm(q);
+      const nq = norm(q);
       list = list.filter(([nombre, info]) => {
         const n = norm(nombre);
         const c = norm(info.categoria || '');
-        return n.includes(qn) || c.includes(qn);
+        return n.includes(nq) || c.includes(nq);
       });
     }
 
@@ -202,7 +236,6 @@ export default function Productos() {
         order === 'name-asc' ? a.localeCompare(b) : b.localeCompare(a)
       );
     } else {
-      // Orden por precio mínimo considerando tiendas visibles
       list.sort(([, A], [, B]) => {
         const minA = cheapestVisible(A.precios, visibleStores);
         const minB = cheapestVisible(B.precios, visibleStores);
@@ -215,40 +248,29 @@ export default function Productos() {
     return list;
   }, [productos, q, terms, category, order, visibleStores]);
 
-  // lista paginada para mostrar (pero totales se calculan sobre TODO el filtrado)
   const pagedEntries = useMemo(
     () => filteredEntries.slice(0, rowsLimit),
     [filteredEntries, rowsLimit]
   );
 
-  /* Precio mínimo entre tiendas visibles */
   function cheapestVisible(precios, stores) {
     const vals = stores.map((s) => precios[s]).filter((v) => v != null);
     return vals.length ? Math.min(...vals) : null;
   }
 
-  /* Toggle chip de tienda */
+  /* -----------------------------
+     Tiendas helpers y limpiar
+     ----------------------------- */
   const toggleStore = (slug) =>
     setActiveStores((prev) => ({ ...prev, [slug]: !prev[slug] }));
-
   const selectAllStores = () =>
-    setActiveStores({
-      lider: true,
-      jumbo: true,
-      unimarc: true,
-      'santa-isabel': true,
-    });
-
+    setActiveStores({ lider: true, jumbo: true, unimarc: true, 'santa-isabel': true });
   const unselectAllStores = () =>
-    setActiveStores({
-      lider: false,
-      jumbo: false,
-      unimarc: false,
-      'santa-isabel': false,
-    });
+    setActiveStores({ lider: false, jumbo: false, unimarc: false, 'santa-isabel': false });
 
   const clearFilters = () => {
     setQ('');
+    setSuggestOpen(false);
     setTerms([]);
     setCategory('todas');
     setOrder('price-asc');
@@ -267,7 +289,7 @@ export default function Productos() {
         if (typeof val === 'number') totals[s] += val;
       });
     });
-    return totals; // {lider: 1234, ...}
+    return totals;
   }, [filteredEntries]);
 
   const minTotal = useMemo(() => {
@@ -276,27 +298,21 @@ export default function Productos() {
   }, [totalsByStore]);
 
   /* -----------------------------
-     Exportar / Compartir
+     Compartir / Exportar
      ----------------------------- */
   const copyView = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
       setToast('Se ha copiado link de búsqueda');
       setTimeout(() => setToast(''), 2000);
-    } catch {
-      // fallback: nada
-    }
+    } catch {}
   };
 
   const doCopyTable = async () => {
-    // Exporta la página actual en formato TSV al portapapeles
     const headers = ['Producto', 'Formato', ...visibleStores.map((s) => STORE_META[s]?.label ?? s)];
     const body = pagedEntries.map(([nombre, info]) => {
       const row = [nombre, info.formato || '—'];
-      visibleStores.forEach((s) => {
-        const val = info.precios[s];
-        row.push(val != null ? String(val) : '—');
-      });
+      visibleStores.forEach((s) => row.push(info.precios[s] ?? ''));
       return row;
     });
     const tsv = [headers.join('\t'), ...body.map((r) => r.join('\t'))].join('\n');
@@ -318,7 +334,6 @@ export default function Productos() {
   };
 
   const doXLSX = () => {
-    // Simple CSV con extensión .xlsx (Excel lo abrirá)
     const headers = ['Producto', 'Formato', ...STORE_ORDER.map((s) => STORE_META[s]?.label ?? s)];
     const body = filteredEntries.map(([nombre, info]) => {
       const row = [nombre, info.formato || '—'];
@@ -330,13 +345,17 @@ export default function Productos() {
   };
 
   /* -----------------------------
-     Cierre de popovers clic afuera
+     Cierre popovers / sugerencias
      ----------------------------- */
   useEffect(() => {
     const onDocClick = (e) => {
       if (exportRef.current && !exportRef.current.contains(e.target)) setExpOpen(false);
       if (rowsRef.current && !rowsRef.current.contains(e.target)) setRowsOpen(false);
       if (storesRef.current && !storesRef.current.contains(e.target)) setStoresOpen(false);
+      if (suggestRef.current && !suggestRef.current.contains(e.target) && e.target !== inputRef.current) {
+        setSuggestOpen(false);
+        setHighlight(-1);
+      }
     };
     document.addEventListener('click', onDocClick);
     return () => document.removeEventListener('click', onDocClick);
@@ -355,33 +374,73 @@ export default function Productos() {
       <section className="toolbar">
         {/* fila 1: buscador + categoría + ordenar */}
         <div className="toolbar-row">
-          <div className="toolbar-group" style={{ flex: 1, minWidth: 260 }}>
+          <div className="toolbar-group" style={{ flex: 1, minWidth: 260, position: 'relative' }}>
             <label className="toolbar-label" htmlFor="buscar">
               Buscar
             </label>
             <input
               id="buscar"
+              ref={inputRef}
               className="toolbar-input"
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => {
+                setQ(e.target.value);
+                setSuggestOpen(Boolean(e.target.value.trim()));
+                setHighlight(-1);
+              }}
+              onFocus={() => setSuggestOpen(Boolean(q.trim()))}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (suggestOpen && suggestions.length) {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setHighlight((h) => (h + 1) % suggestions.length);
+                    return;
+                  }
+                  if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setHighlight((h) => (h - 1 + suggestions.length) % suggestions.length);
+                    return;
+                  }
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (highlight >= 0) {
+                      addTermExact(suggestions[highlight]);
+                    } else {
+                      addTermFree();
+                    }
+                    return;
+                  }
+                  if (e.key === 'Escape') {
+                    setSuggestOpen(false);
+                    setHighlight(-1);
+                    return;
+                  }
+                } else if (e.key === 'Enter') {
                   e.preventDefault();
-                  addTerm();
+                  addTermFree();
                 }
               }}
               placeholder="Ej: arroz, sal, aceite… (Enter para agregar)"
+              aria-autocomplete="list"
+              aria-expanded={suggestOpen}
+              aria-owns="suggest-list"
+              role="combobox"
             />
+
             {/* chips de términos */}
             {terms.length > 0 && (
               <div className="toolbar-chips" style={{ marginTop: 8 }}>
                 {terms.map((t) => (
-                  <span key={t} className="chip chip-active" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    {t}
+                  <span
+                    key={t.key}
+                    className="chip chip-active"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                  >
+                    {t.raw}
                     <button
                       type="button"
-                      aria-label={`Quitar ${t}`}
-                      onClick={() => removeTerm(t)}
+                      aria-label={`Quitar ${t.raw}`}
+                      onClick={() => removeTerm(t.key)}
                       style={{
                         appearance: 'none',
                         border: 'none',
@@ -389,7 +448,7 @@ export default function Productos() {
                         color: '#fff',
                         fontWeight: 900,
                         lineHeight: 1,
-                        cursor: 'pointer'
+                        cursor: 'pointer',
                       }}
                     >
                       ×
@@ -399,6 +458,46 @@ export default function Productos() {
                 <button type="button" className="chip chip-clear" onClick={clearSearch}>
                   Limpiar búsqueda
                 </button>
+              </div>
+            )}
+
+            {/* AUTOCOMPLETE */}
+            {suggestOpen && suggestions.length > 0 && (
+              <div
+                ref={suggestRef}
+                id="suggest-list"
+                role="listbox"
+                className="export-menu show"
+                style={{
+                  position: 'absolute',
+                  insetInline: 0,
+                  top: '100%',
+                  marginTop: 6,
+                  maxHeight: 280,
+                  overflowY: 'auto',
+                  zIndex: 30,
+                }}
+              >
+                {suggestions.map((name, i) => (
+                  <button
+                    key={name}
+                    role="option"
+                    aria-selected={i === highlight}
+                    className="btn btn-secondary btn-sm"
+                    style={{
+                      justifyContent: 'flex-start',
+                      background: i === highlight ? '#eef2ff' : undefined,
+                    }}
+                    onMouseEnter={() => setHighlight(i)}
+                    onMouseDown={(e) => {
+                      // evita blur del input antes del click
+                      e.preventDefault();
+                    }}
+                    onClick={() => addTermExact(name)}
+                  >
+                    {name}
+                  </button>
+                ))}
               </div>
             )}
           </div>
@@ -440,7 +539,7 @@ export default function Productos() {
           </div>
         </div>
 
-        {/* fila 2: tiendas (popover) + filas (popover) + exportar (popover) + compartir + limpiar */}
+        {/* fila 2: tiendas + filas + exportar + compartir + limpiar */}
         <div className="toolbar-row actions-row" style={{ justifyContent: 'flex-start', gap: 10 }}>
           {/* Tiendas */}
           <div className="toolbar__export" ref={storesRef}>
@@ -606,7 +705,7 @@ export default function Productos() {
             })}
           </tbody>
 
-          {/* Totales por supermercado (sobre TODOS los filtrados, no solo la página) */}
+          {/* Totales */}
           {filteredEntries.length > 0 && (
             <tfoot>
               <tr>
@@ -621,7 +720,7 @@ export default function Productos() {
                         textAlign: 'right',
                         background: isMin ? '#dff5df' : '#F3F4F6',
                         color: isMin ? '#006400' : '#111827',
-                        fontWeight: 800
+                        fontWeight: 800,
                       }}
                     >
                       {total > 0 ? CLP(total) : '—'}

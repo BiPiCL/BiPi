@@ -15,11 +15,17 @@ const supabase = createClient(
    Utilidades
    =========================== */
 const norm = (s = '') =>
-  s.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  s
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
 
-const CLP = (v) => (typeof v === 'number' ? `$${Number(v).toLocaleString('es-CL')}` : '—');
+const CLP = (v) =>
+  typeof v === 'number' ? `$${Number(v).toLocaleString('es-CL')}` : '—';
 
-/* Mapa de tiendas (slug → etiqueta) */
+/* Tiendas (slug → etiqueta) */
 const STORE_META = {
   lider: { label: 'Líder' },
   jumbo: { label: 'Jumbo' },
@@ -36,29 +42,18 @@ const ORDER_OPTIONS = [
   { id: 'name-desc', label: 'Nombre Z → A' },
 ];
 
-/* Helpers URL <-> Estado */
-const encodeStores = (obj) => STORE_ORDER.map((s) => (obj[s] ? '1' : '0')).join('');
-const decodeStores = (str) => {
-  const flags = (str || '').padEnd(STORE_ORDER.length, '1').slice(0, STORE_ORDER.length);
-  const out = {};
-  STORE_ORDER.forEach((s, i) => (out[s] = flags[i] === '1'));
-  return out;
-};
-
 export default function Productos() {
   /* -----------------------------
-     Estado base
+     Estado de datos y filtros
      ----------------------------- */
   const [rows, setRows] = useState([]);
   const [err, setErr] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  // Filtros/orden
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('todas');
   const [order, setOrder] = useState('price-asc');
 
-  // Tiendas activas
+  /* tiendas activas (todas true por defecto) */
   const [activeStores, setActiveStores] = useState({
     lider: true,
     jumbo: true,
@@ -66,68 +61,90 @@ export default function Productos() {
     'santa-isabel': true,
   });
 
-  // Controles plegables
-  const [showStores, setShowStores] = useState(false);
-  const [showExport, setShowExport] = useState(false);
-  const [showPageSize, setShowPageSize] = useState(false);
+  /* UI: popovers */
+  const [openStores, setOpenStores] = useState(false);
+  const [openRows, setOpenRows] = useState(false);
+  const [openExport, setOpenExport] = useState(false);
 
-  // Paginación simple (número de filas visibles)
-  const [pageSize, setPageSize] = useState(25);
+  /* filas a mostrar (sin paginación, solo límite visual) */
+  const [rowsLimit, setRowsLimit] = useState(25);
 
-  // Debounce para el buscador
-  const debounceTimer = useRef(null);
+  /* refs para cierre por click afuera */
+  const storesRef = useRef(null);
+  const rowsRef = useRef(null);
+  const exportRef = useRef(null);
 
   /* -----------------------------
-     Cargar datos
+     Carga de datos desde Supabase
      ----------------------------- */
   useEffect(() => {
     (async () => {
-      setLoading(true);
-      setErr(null);
       const { data, error } = await supabase
         .from('product_price_matrix')
-        .select('product_id, producto, categoria, formato, tienda_slug, tienda, precio_clp')
+        .select(
+          'product_id, producto, categoria, formato, tienda_slug, tienda, precio_clp'
+        )
         .order('producto', { ascending: true });
 
       if (error) setErr(error.message);
-      setRows(data ?? []);
-      setLoading(false);
+      else setRows(data ?? []);
     })();
   }, []);
 
+  /* Cerrar popovers al hacer clic fuera */
+  useEffect(() => {
+    function onDocClick(e) {
+      const t = e.target;
+      if (storesRef.current && !storesRef.current.contains(t)) setOpenStores(false);
+      if (rowsRef.current && !rowsRef.current.contains(t)) setOpenRows(false);
+      if (exportRef.current && !exportRef.current.contains(t)) setOpenExport(false);
+    }
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, []);
+
   /* -----------------------------
-     Categorías únicas
+     Derivados: categorías únicas
      ----------------------------- */
   const categories = useMemo(() => {
     const set = new Set();
-    rows.forEach((r) => r.categoria && set.add(r.categoria));
+    rows.forEach((r) => {
+      if (r.categoria) set.add(r.categoria);
+    });
     return ['todas', ...Array.from(set).sort((a, b) => a.localeCompare(b))];
   }, [rows]);
 
   /* -----------------------------
-     Agrupar por producto
+     Agrupar filas por producto
      ----------------------------- */
   const productos = useMemo(() => {
     const map = {};
     rows.forEach((r) => {
       const key = r.producto;
       if (!map[key]) {
-        map[key] = { categoria: r.categoria, formato: r.formato, precios: {} };
+        map[key] = {
+          categoria: r.categoria,
+          formato: r.formato,
+          precios: {}, // { slug: precio }
+        };
       }
       map[key].precios[r.tienda_slug] = r.precio_clp;
     });
-    return map;
+    return map; // { nombre: {categoria, formato, precios} }
   }, [rows]);
 
   /* -----------------------------
-     Tiendas visibles (según chips)
+     Tiendas visibles (chips)
      ----------------------------- */
   const visibleStores = useMemo(() => {
     const list = STORE_ORDER.filter((slug) => activeStores[slug]);
-    return list.length ? list : STORE_ORDER; // si apagan todas, mostramos todas
+    return list.length ? list : STORE_ORDER; // si apaga todas, mostramos todas
   }, [activeStores]);
 
-  const allSelected = STORE_ORDER.every((s) => activeStores[s]);
+  const countActiveStores = useMemo(
+    () => STORE_ORDER.filter((s) => activeStores[s]).length,
+    [activeStores]
+  );
 
   /* -----------------------------
      Filtrar + ordenar
@@ -136,6 +153,7 @@ export default function Productos() {
   const filteredSorted = useMemo(() => {
     let list = Object.entries(productos);
 
+    // Filtro buscador (nombre o categoría)
     if (qn) {
       list = list.filter(([nombre, info]) => {
         const n = norm(nombre);
@@ -144,15 +162,18 @@ export default function Productos() {
       });
     }
 
+    // Filtro categoría
     if (category !== 'todas') {
       list = list.filter(([, info]) => info.categoria === category);
     }
 
+    // Orden
     if (order === 'name-asc' || order === 'name-desc') {
       list.sort(([a], [b]) =>
         order === 'name-asc' ? a.localeCompare(b) : b.localeCompare(a)
       );
     } else {
+      // Orden por precio más bajo (considerando solo tiendas visibles)
       list.sort(([, A], [, B]) => {
         const minA = cheapestVisible(A.precios, visibleStores);
         const minB = cheapestVisible(B.precios, visibleStores);
@@ -165,143 +186,124 @@ export default function Productos() {
     return list;
   }, [productos, qn, category, order, visibleStores]);
 
-  const pageItems = useMemo(() => filteredSorted.slice(0, pageSize), [filteredSorted, pageSize]);
+  const displayed = useMemo(
+    () => filteredSorted.slice(0, rowsLimit),
+    [filteredSorted, rowsLimit]
+  );
 
-  /* -----------------------------
-     Precio mínimo visible
-     ----------------------------- */
+  /* Precio mínimo entre tiendas visibles */
   function cheapestVisible(precios, stores) {
     const vals = stores.map((s) => precios[s]).filter((v) => v != null);
     return vals.length ? Math.min(...vals) : null;
   }
 
-  /* -----------------------------
-     Acciones UI
-     ----------------------------- */
+  /* Toggle chip de tienda */
   const toggleStore = (slug) =>
     setActiveStores((prev) => ({ ...prev, [slug]: !prev[slug] }));
 
-  const toggleAllStores = () => {
-    const newState = !allSelected;
-    const updated = {};
-    STORE_ORDER.forEach((s) => (updated[s] = newState));
-    setActiveStores(updated);
-  };
+  /* Seleccionar / quitar todas las tiendas */
+  const selectAllStores = () =>
+    setActiveStores({
+      lider: true,
+      jumbo: true,
+      unimarc: true,
+      'santa-isabel': true,
+    });
+  const clearAllStores = () =>
+    setActiveStores({
+      lider: false,
+      jumbo: false,
+      unimarc: false,
+      'santa-isabel': false,
+    });
 
   const clearFilters = () => {
     setQ('');
     setCategory('todas');
     setOrder('price-asc');
-    setActiveStores({ lider: true, jumbo: true, unimarc: true, 'santa-isabel': true });
-    setPageSize(25);
+    selectAllStores();
   };
 
   /* -----------------------------
-     Sincronización con URL (C.4)
+     Exportar / compartir
      ----------------------------- */
-  // Leer una vez
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const sp = new URLSearchParams(window.location.search);
-    const q0 = sp.get('q');
-    const cat0 = sp.get('cat');
-    const ord0 = sp.get('ord');
-    const size0 = sp.get('size');
-    const stores0 = sp.get('stores');
-    if (q0 !== null) setQ(q0);
-    if (cat0 !== null) setCategory(cat0);
-    if (ord0 !== null) setOrder(ord0);
-    if (size0 !== null && !Number.isNaN(Number(size0))) setPageSize(Number(size0));
-    if (stores0) setActiveStores(decodeStores(stores0));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  function toCSV(rowsArray, stores) {
+    const head = ['Producto', 'Formato', ...stores.map((s) => STORE_META[s]?.label || s)];
+    const lines = [head.join(',')];
 
-  // Escribir con debounce
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => {
-      const sp = new URLSearchParams(window.location.search);
-      q ? sp.set('q', q) : sp.delete('q');
-      category && category !== 'todas' ? sp.set('cat', category) : sp.delete('cat');
-      order && order !== 'price-asc' ? sp.set('ord', order) : sp.delete('ord');
-      pageSize !== 25 ? sp.set('size', String(pageSize)) : sp.delete('size');
-      const storesEncoded = encodeStores(activeStores);
-      storesEncoded !== '1111' ? sp.set('stores', storesEncoded) : sp.delete('stores');
-      const newUrl = `${window.location.pathname}?${sp.toString()}`;
-      window.history.replaceState(null, '', newUrl);
-    }, 250);
-    return () => debounceTimer.current && clearTimeout(debounceTimer.current);
-  }, [q, category, order, pageSize, activeStores]);
-
-  const handleShare = async () => {
-    if (typeof window === 'undefined') return;
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      setTempNotice('Enlace copiado. ¡Puedes compartir esta vista!');
-    } catch {
-      setTempNotice('No se pudo copiar el enlace.');
-    }
-  };
-
-  /* -----------------------------
-     Exportar (CSV/Excel)
-     ----------------------------- */
-  function toCSV(rowsArr) {
-    const headers = ['Producto', 'Formato', ...visibleStores.map((s) => STORE_META[s]?.label ?? s)];
-    const lines = [headers.join(',')];
-    rowsArr.forEach(([nombre, info]) => {
-      const row = [
-        `"${nombre.replace(/"/g, '""')}"`,
-        `"${(info.formato || '').replace(/"/g, '""')}"`,
-        ...visibleStores.map((s) => (info.precios[s] != null ? info.precios[s] : '')),
+    rowsArray.forEach(([nombre, info]) => {
+      const line = [
+        escapeCSV(nombre),
+        escapeCSV(info.formato || ''),
+        ...stores.map((s) =>
+          info.precios[s] != null ? String(info.precios[s]).replace(/\./g, '') : ''
+        ),
       ];
-      lines.push(row.join(','));
+      lines.push(line.join(','));
     });
+
     return lines.join('\n');
   }
 
-  function downloadBlob(content, filename, type) {
-    const blob = new Blob([content], { type });
+  function escapeCSV(v) {
+    const s = String(v ?? '');
+    if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  }
+
+  function download(text, filename, type = 'text/csv;charset=utf-8;') {
+    const blob = new Blob([text], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     URL.revokeObjectURL(url);
   }
 
-  const handleDownloadCSV = () => {
-    const csv = toCSV(filteredSorted);
-    downloadBlob(csv, 'bipi_productos.csv', 'text/csv;charset=utf-8;');
-    setTempNotice('CSV descargado.');
+  const copyTable = () => {
+    const head = ['Producto', 'Formato', ...visibleStores.map((s) => STORE_META[s]?.label || s)];
+    const lines = [head.join('\t')];
+
+    displayed.forEach(([nombre, info]) => {
+      const row = [
+        nombre,
+        info.formato || '',
+        ...visibleStores.map((s) =>
+          info.precios[s] != null ? CLP(info.precios[s]) : ''
+        ),
+      ];
+      lines.push(row.join('\t'));
+    });
+
+    navigator.clipboard.writeText(lines.join('\n'));
   };
 
-  const handleCopyTable = async () => {
-    const csv = toCSV(pageItems);
-    try {
-      await navigator.clipboard.writeText(csv);
-      setTempNotice('Tabla copiada (CSV).');
-    } catch {
-      setTempNotice('No se pudo copiar. Permite el acceso al portapapeles.');
-    }
+  const downloadCSV = () => {
+    const csv = toCSV(displayed, visibleStores);
+    download(csv, 'bipi_productos.csv');
   };
 
-  const handleDownloadExcel = () => {
-    const csv = toCSV(filteredSorted);
-    downloadBlob(csv, 'bipi_productos.csv', 'text/csv;charset=utf-8;');
-    setTempNotice('Excel descargado (formato CSV).');
+  const downloadExcel = () => {
+    // CSV con extensión .xlsx (suficiente para Excel en este MVP)
+    const csv = toCSV(displayed, visibleStores);
+    download(csv, 'bipi_productos.xlsx');
   };
 
-  /* -----------------------------
-     Avisos temporales (toast simple)
-     ----------------------------- */
-  const [tempNotice, setTempNotice] = useState('');
-  useEffect(() => {
-    if (!tempNotice) return;
-    const t = setTimeout(() => setTempNotice(''), 2200);
-    return () => clearTimeout(t);
-  }, [tempNotice]);
+  const shareView = () => {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (category !== 'todas') params.set('cat', category);
+    if (order !== 'price-asc') params.set('ord', order);
+    params.set(
+      'stores',
+      STORE_ORDER.filter((s) => activeStores[s]).join(',')
+    );
+    const url = `${window.location.origin}/productos?${params.toString()}`;
+    navigator.clipboard.writeText(url);
+  };
 
   /* -----------------------------
      Render
@@ -312,25 +314,14 @@ export default function Productos() {
         Comparador de precios — Productos
       </h1>
 
-      {/* Aviso de error */}
-      {err && (
-        <div className="alert alert-error" role="status" aria-live="polite">
-          <strong>Error:</strong> {err}
-        </div>
-      )}
-
-      {/* Toast temporal */}
-      {tempNotice && (
-        <div className="toast" role="status" aria-live="polite">
-          {tempNotice}
-        </div>
-      )}
-
+      {/* ====== TOOLBAR ====== */}
       <section className="toolbar">
-        {/* === FILA 1 === */}
+        {/* fila 1: buscador + categoría + ordenar */}
         <div className="toolbar-row">
           <div className="toolbar-group" style={{ flex: 1, minWidth: 240 }}>
-            <label className="toolbar-label" htmlFor="buscar">Buscar</label>
+            <label className="toolbar-label" htmlFor="buscar">
+              Buscar
+            </label>
             <input
               id="buscar"
               className="toolbar-input"
@@ -341,7 +332,9 @@ export default function Productos() {
           </div>
 
           <div className="toolbar-group">
-            <label className="toolbar-label" htmlFor="categoria">Categoría</label>
+            <label className="toolbar-label" htmlFor="categoria">
+              Categoría
+            </label>
             <select
               id="categoria"
               className="toolbar-select"
@@ -349,13 +342,17 @@ export default function Productos() {
               onChange={(e) => setCategory(e.target.value)}
             >
               {categories.map((c) => (
-                <option key={c} value={c}>{c === 'todas' ? 'Todas' : c}</option>
+                <option key={c} value={c}>
+                  {c === 'todas' ? 'Todas' : c}
+                </option>
               ))}
             </select>
           </div>
 
           <div className="toolbar-group">
-            <label className="toolbar-label" htmlFor="ordenar">Ordenar</label>
+            <label className="toolbar-label" htmlFor="ordenar">
+              Ordenar
+            </label>
             <select
               id="ordenar"
               className="toolbar-select"
@@ -363,30 +360,45 @@ export default function Productos() {
               onChange={(e) => setOrder(e.target.value)}
             >
               {ORDER_OPTIONS.map((o) => (
-                <option key={o.id} value={o.id}>{o.label}</option>
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* === FILA 2 (todo alineado) === */}
-        <div className="toolbar-row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          {/* Tiendas (sin label encima) */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        {/* fila 2: acciones (altura alineada) */}
+        <div className="toolbar-row actions-row" style={{ justifyContent: 'space-between' }}>
+          {/* --- Tiendas (popover) --- */}
+          <div ref={storesRef} style={{ display: 'inline-flex', position: 'relative' }}>
             <button
               type="button"
-              className="chip"
-              onClick={() => setShowStores((s) => !s)}
+              className={`chip ${openStores ? 'chip-active' : ''}`}
+              onClick={() => setOpenStores((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={openStores ? 'true' : 'false'}
+              title="Filtrar por tiendas"
             >
-              {`Tiendas (${STORE_ORDER.length}) ${showStores ? '▴' : '▾'}`}
+              Tiendas ({countActiveStores || 4})
             </button>
 
-            {showStores && (
-              <div className="toolbar-chips" style={{ width: '100%', marginTop: 8 }}>
-                <button type="button" className="chip" onClick={toggleAllStores}>
-                  {allSelected ? 'Quitar todas' : 'Seleccionar todas'}
+            <div
+              className={`export-menu ${openStores ? 'show' : ''}`}
+              role="menu"
+              aria-label="Tiendas disponibles"
+              style={{ minWidth: 280, gap: 10, flexDirection: 'column' }}
+            >
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn btn-ghost" onClick={selectAllStores}>
+                  Seleccionar todas
                 </button>
+                <button type="button" className="btn btn-ghost" onClick={clearAllStores}>
+                  Quitar todas
+                </button>
+              </div>
 
+              <div className="toolbar-chips" style={{ marginTop: 2 }}>
                 {STORE_ORDER.map((slug) => {
                   const on = activeStores[slug];
                   const label = STORE_META[slug]?.label ?? slug;
@@ -397,66 +409,93 @@ export default function Productos() {
                       className={`chip ${on ? 'chip-active' : ''}`}
                       onClick={() => toggleStore(slug)}
                       aria-pressed={on}
+                      title={on ? `Ocultar ${label}` : `Mostrar ${label}`}
                     >
                       {label}
                     </button>
                   );
                 })}
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Acciones derechas */}
-          <div className="toolbar-actions">
-            {/* Filas */}
-            <button
-              type="button"
-              className="chip"
-              onClick={() => setShowPageSize((s) => !s)}
-            >
-              {`Filas: ${pageSize} ${showPageSize ? '▴' : '▾'}`}
-            </button>
-            {showPageSize && (
-              <select
-                className="toolbar-select"
-                value={pageSize}
-                onChange={(e) => setPageSize(Number(e.target.value))}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            {/* --- Filas (popover) --- */}
+            <div ref={rowsRef} style={{ position: 'relative', display: 'inline-flex' }}>
+              <button
+                type="button"
+                className={`chip ${openRows ? 'chip-active' : ''}`}
+                onClick={() => setOpenRows((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={openRows ? 'true' : 'false'}
+                title="Elegir filas a mostrar"
+              >
+                Filas: {rowsLimit}
+              </button>
+
+              <div
+                className={`export-menu ${openRows ? 'show' : ''}`}
+                role="menu"
+                aria-label="Filas por página"
+                style={{ padding: 8, gap: 8 }}
               >
                 {[10, 25, 50, 100].map((n) => (
-                  <option key={n} value={n}>{n}</option>
+                  <button
+                    key={n}
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => {
+                      setRowsLimit(n);
+                      setOpenRows(false);
+                    }}
+                  >
+                    {n}
+                  </button>
                 ))}
-              </select>
-            )}
-
-            {/* Exportar */}
-            <button
-              type="button"
-              className="chip"
-              onClick={() => setShowExport((s) => !s)}
-            >
-              {`Exportar ${showExport ? '▴' : '▾'}`}
-            </button>
-            {showExport && (
-              <div className="toolbar-actions">
-                <button type="button" className="chip" onClick={handleCopyTable}>Copiar</button>
-                <button type="button" className="chip" onClick={handleDownloadCSV}>CSV</button>
-                <button type="button" className="chip" onClick={handleDownloadExcel}>Excel</button>
               </div>
-            )}
+            </div>
 
-            {/* Compartir */}
-            <button type="button" className="chip" onClick={handleShare} title="Copiar enlace de esta vista">
+            {/* --- Exportar (popover) --- */}
+            <div ref={exportRef} className="toolbar__export">
+              <button
+                type="button"
+                className={`btn btn-secondary btn-sm ${openExport ? 'is-open' : ''}`}
+                onClick={() => setOpenExport((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={openExport ? 'true' : 'false'}
+                title="Exportar datos"
+              >
+                Exportar ▾
+              </button>
+
+              <div
+                className={`export-menu ${openExport ? 'show' : ''}`}
+                role="menu"
+                aria-label="Opciones de exportación"
+              >
+                <button type="button" className="btn btn-ghost" onClick={copyTable}>
+                  Copiar
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={downloadCSV}>
+                  CSV
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={downloadExcel}>
+                  Excel
+                </button>
+              </div>
+            </div>
+
+            <button type="button" className="chip" onClick={shareView} title="Copiar URL con filtros">
               Compartir vista
             </button>
 
-            {/* Limpiar */}
             <button type="button" className="chip chip-clear" onClick={clearFilters}>
               Limpiar filtros
             </button>
           </div>
         </div>
 
-        {/* === FILA 3 === */}
+        {/* fila 3: contador */}
         <div className="toolbar-row" style={{ marginBottom: 0 }}>
           <span className="muted">
             {filteredSorted.length} producto{filteredSorted.length === 1 ? '' : 's'} encontrados
@@ -464,7 +503,14 @@ export default function Productos() {
         </div>
       </section>
 
-      {/* === TABLA === */}
+      {/* Errores */}
+      {err && (
+        <p style={{ color: 'red', marginTop: 8 }}>
+          Error al cargar datos: {err}
+        </p>
+      )}
+
+      {/* ====== TABLA ====== */}
       <div style={{ overflowX: 'auto', marginTop: 10 }}>
         <table>
           <thead>
@@ -472,7 +518,7 @@ export default function Productos() {
               <th>Producto</th>
               <th>Formato</th>
               {visibleStores.map((s) => (
-                <th key={s} style={{ textAlign: 'right' }}>
+                <th key={s} style={{ textAlign: 'right', textTransform: 'capitalize' }}>
                   {STORE_META[s]?.label ?? s}
                 </th>
               ))}
@@ -480,61 +526,43 @@ export default function Productos() {
           </thead>
 
           <tbody>
-            {/* Skeletons mientras carga */}
-            {loading &&
-              Array.from({ length: 8 }).map((_, i) => (
-                <tr key={`sk-${i}`}>
-                  <td><div className="skeleton skeleton-text" /></td>
-                  <td><div className="skeleton skeleton-text short" /></td>
-                  {visibleStores.map((s) => (
-                    <td key={s} style={{ textAlign: 'right' }}>
-                      <div className="skeleton skeleton-text tiny" style={{ marginLeft: 'auto' }} />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-
-            {/* Sin resultados (cuando ya cargó y filtros vacían la tabla) */}
-            {!loading && pageItems.length === 0 && (
+            {displayed.length === 0 && (
               <tr>
-                <td colSpan={2 + visibleStores.length} style={{ textAlign: 'center', padding: 20 }}>
-                  <div style={{ marginBottom: 8, fontWeight: 700 }}>Sin resultados</div>
-                  <div className="muted" style={{ marginBottom: 10 }}>
-                    Ajusta búsqueda, categoría o tiendas. También puedes “Limpiar filtros”.
-                  </div>
-                  <button className="chip chip-clear" onClick={clearFilters}>Limpiar filtros</button>
+                <td
+                  colSpan={2 + visibleStores.length}
+                  style={{ padding: 16, color: '#6B7280', textAlign: 'center' }}
+                >
+                  No se encontraron productos para la búsqueda/filtros actuales.
                 </td>
               </tr>
             )}
 
-            {/* Filas reales */}
-            {!loading &&
-              pageItems.map(([nombre, info]) => {
-                const min = cheapestVisible(info.precios, visibleStores);
-                return (
-                  <tr key={nombre}>
-                    <td>{nombre}</td>
-                    <td>{info.formato || '—'}</td>
-                    {visibleStores.map((s) => {
-                      const val = info.precios[s];
-                      const isMin = min != null && val === min;
-                      return (
-                        <td
-                          key={s}
-                          style={{
-                            textAlign: 'right',
-                            fontWeight: isMin ? 700 : 500,
-                            background: isMin ? '#e6f7e6' : 'transparent',
-                            color: isMin ? '#006400' : '#111827',
-                          }}
-                        >
-                          {val != null ? CLP(val) : '—'}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
+            {displayed.map(([nombre, info]) => {
+              const min = cheapestVisible(info.precios, visibleStores);
+              return (
+                <tr key={nombre}>
+                  <td>{nombre}</td>
+                  <td>{info.formato || '—'}</td>
+                  {visibleStores.map((s) => {
+                    const val = info.precios[s];
+                    const isMin = min != null && val === min;
+                    return (
+                      <td
+                        key={s}
+                        style={{
+                          textAlign: 'right',
+                          fontWeight: isMin ? 700 : 500,
+                          background: isMin ? '#e6f7e6' : 'transparent',
+                          color: isMin ? '#006400' : '#111827',
+                        }}
+                      >
+                        {val != null ? CLP(val) : '—'}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

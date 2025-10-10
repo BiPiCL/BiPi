@@ -1,5 +1,5 @@
 /* =========================================================
-   BiPi Chile — Estilos Globales (versión completa 2025)
+   BiPi Chile — Estilos Globales (versión final 2025)
    ========================================================= */
 
 /* === Reset global === */
@@ -34,7 +34,7 @@ strong {
 }
 
 /* =========================================================
-   NAVBAR (BiPi Chile)
+   NAVBAR
    ========================================================= */
 .navbar {
   position: sticky;
@@ -94,7 +94,6 @@ strong {
   text-decoration: underline;
 }
 
-/* Mantiene posición en móviles */
 @media (max-width: 640px) {
   .nav-flex { gap: 12px; }
   .brand-name { font-size: 1.05rem; }
@@ -102,7 +101,7 @@ strong {
 }
 
 /* =========================================================
-   HOME / INICIO — Encabezado principal
+   HOME / INICIO
    ========================================================= */
 .page-title {
   font-size: clamp(1.8rem, 3.5vw, 2.2rem);
@@ -211,28 +210,7 @@ strong {
 }
 
 /* =========================================================
-   CONTENIDO POSTERIOR — Tiendas y contacto
-   ========================================================= */
-.content-left {
-  max-width: 760px;
-  margin: 0 auto;
-  text-align: left;
-}
-
-.section-title {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: #111827;
-  margin-bottom: 10px;
-}
-
-.stores { list-style: disc; padding-left: 22px; }
-.stores li { margin: 6px 0; }
-
-.contact { margin-top: 16px; color: #374151; }
-
-/* =========================================================
-   TOOLBAR /PRODUCTOS — buscador, tiendas y orden
+   TOOLBAR / PRODUCTOS
    ========================================================= */
 .toolbar {
   background: #fff;
@@ -251,12 +229,8 @@ strong {
   margin-bottom: 8px;
 }
 
-/* fila de acciones (botones) con altura uniforme */
-.actions-row {
-  align-items: stretch;
-}
+.actions-row { align-items: stretch; }
 
-/* grupos con label + control */
 .toolbar-group {
   display: flex;
   flex-direction: column;
@@ -286,6 +260,7 @@ strong {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
 }
 
+/* Chips */
 .toolbar-chips {
   display: flex;
   flex-wrap: wrap;
@@ -320,7 +295,9 @@ strong {
   color: #374151;
 }
 
-/* -------- Botones utilitarios -------- */
+/* =========================================================
+   BOTONES GENERALES
+   ========================================================= */
 .btn {
   appearance: none;
   border: 1px solid transparent;
@@ -336,22 +313,39 @@ strong {
   gap: 8px;
 }
 
-.btn-sm { padding: 8px 12px; font-size: .9rem; }
-
-.btn-secondary {
-  background: #111827;
-  color: #fff;
+.btn-sm {
+  padding: 8px 12px;
+  font-size: .9rem;
 }
-.btn-secondary:hover { filter: brightness(1.05); transform: translateY(-1px); }
 
+/* Secundario — igual que los chips */
+.btn-secondary {
+  background: #fff;
+  color: #111827;
+  border: 1px solid #d1d5db;
+}
+.btn-secondary:hover {
+  border-color: #2563EB;
+  color: #2563EB;
+  background: #f9fafb;
+  transform: translateY(-1px);
+}
+
+/* Ghost — gris suave para popovers */
 .btn-ghost {
   background: #F3F4F6;
   color: #111827;
   border: 1px solid #E5E7EB;
 }
-.btn-ghost:hover { background: #e9eaec; }
+.btn-ghost:hover {
+  background: #e9eaec;
+  border-color: #2563EB;
+  color: #2563EB;
+}
 
-/* -------- Popovers (Exportar / Filas / Tiendas) -------- */
+/* =========================================================
+   POPOVERS (Exportar / Filas / Tiendas)
+   ========================================================= */
 .toolbar__export { position: relative; display: inline-flex; }
 
 .export-menu {
@@ -366,13 +360,17 @@ strong {
   min-width: 210px;
   display: none;
   z-index: 40;
-  white-space: nowrap;   /* evita saltos de línea que “estiran” */
+  white-space: nowrap;
 }
 
-.export-menu.show { display: flex; flex-direction: column; gap: 8px; }
+.export-menu.show {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
 /* =========================================================
-   TABLAS GENERALES (productos)
+   TABLAS
    ========================================================= */
 table { border-collapse: collapse; width: 100%; }
 
@@ -389,11 +387,14 @@ th {
   white-space: nowrap;
 }
 
-td { color: #111827; font-weight: 500; }
+td {
+  color: #111827;
+  font-weight: 500;
+}
 td strong { font-weight: 800; }
 
 /* =========================================================
-   FOOTER — separado, legible en móvil
+   FOOTER
    ========================================================= */
 .footer {
   border-top: 1px solid #E5E7EB;

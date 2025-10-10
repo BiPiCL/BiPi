@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 /* ===========================
-   Conexión a Supabase (env)
+   Supabase (env)
    =========================== */
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -12,20 +12,15 @@ const supabase = createClient(
 );
 
 /* ===========================
-   Utilidades
+   Utils
    =========================== */
 const norm = (s = '') =>
-  s
-    .toString()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim();
+  s.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
 const CLP = (v) =>
   typeof v === 'number' ? `$${Number(v).toLocaleString('es-CL')}` : '—';
 
-/* Mapa de tiendas (slug → etiqueta bonita) */
+/* Tiendas */
 const STORE_META = {
   lider: { label: 'Líder' },
   jumbo: { label: 'Jumbo' },
@@ -34,7 +29,7 @@ const STORE_META = {
 };
 const STORE_ORDER = ['lider', 'jumbo', 'unimarc', 'santa-isabel'];
 
-/* Opciones de orden */
+/* Orden */
 const ORDER_OPTIONS = [
   { id: 'price-asc', label: 'Precio (Menor a Mayor) ↑' },
   { id: 'price-desc', label: 'Precio (Mayor a Menor) ↓' },
@@ -44,17 +39,15 @@ const ORDER_OPTIONS = [
 
 export default function Productos() {
   /* -----------------------------
-     Estado base / datos
+     Estado base
      ----------------------------- */
   const [rows, setRows] = useState([]);
   const [err, setErr] = useState(null);
 
-  /* filtros generales */
+  const [q, setQ] = useState('');
   const [category, setCategory] = useState('todas');
   const [order, setOrder] = useState('price-asc');
-  const [pageSize, setPageSize] = useState(25);
 
-  /* chips de tiendas activas */
   const [activeStores, setActiveStores] = useState({
     lider: true,
     jumbo: true,
@@ -62,16 +55,25 @@ export default function Productos() {
     'santa-isabel': true,
   });
 
+  /* Paginación visual (filas por página) */
+  const [pageSize, setPageSize] = useState(25);
+
+  /* Popovers abiertos: 'stores' | 'rows' | 'export' | null */
+  const [openMenu, setOpenMenu] = useState(null);
+
+  /* Autocomplete */
+  const [showAuto, setShowAuto] = useState(false);
+  const inputWrapRef = useRef(null);
+  const toolbarRef = useRef(null);
+
   /* -----------------------------
-     Carga de datos
+     Carga datos
      ----------------------------- */
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase
         .from('product_price_matrix')
-        .select(
-          'product_id, producto, categoria, formato, tienda_slug, tienda, precio_clp'
-        )
+        .select('product_id, producto, categoria, formato, tienda_slug, precio_clp')
         .order('producto', { ascending: true });
 
       if (error) setErr(error.message);
@@ -79,135 +81,68 @@ export default function Productos() {
     })();
   }, []);
 
-  /* -----------------------------
-     Estructuras derivadas
-     ----------------------------- */
-  // { nombre: {categoria, formato, precios{slug:precio}} }
-  const productos = useMemo(() => {
-    const map = {};
-    rows.forEach((r) => {
-      const key = r.producto;
-      if (!map[key]) {
-        map[key] = {
-          categoria: r.categoria,
-          formato: r.formato,
-          precios: {},
-        };
-      }
-      map[key].precios[r.tienda_slug] = r.precio_clp;
-    });
-    return map;
-  }, [rows]);
-
-  // categorías
+  /* Categorías únicas */
   const categories = useMemo(() => {
     const set = new Set();
     rows.forEach((r) => r.categoria && set.add(r.categoria));
     return ['todas', ...Array.from(set).sort((a, b) => a.localeCompare(b))];
   }, [rows]);
 
-  // tiendas visibles segun chips
+  /* Agrupar por producto */
+  const productos = useMemo(() => {
+    const map = {};
+    rows.forEach((r) => {
+      const key = r.producto;
+      if (!map[key]) {
+        map[key] = { categoria: r.categoria, formato: r.formato, precios: {} };
+      }
+      map[key].precios[r.tienda_slug] = r.precio_clp;
+    });
+    return map; // { nombre: {categoria, formato, precios} }
+  }, [rows]);
+
+  /* Sugerencias de autocomplete (nombres únicos que matcheen q) */
+  const suggestions = useMemo(() => {
+    const qn = norm(q);
+    if (!qn) return [];
+    const all = Object.keys(productos);
+    return all
+      .filter((name) => norm(name).includes(qn))
+      .slice(0, 8); // top 8
+  }, [q, productos]);
+
+  /* Tiendas visibles (chips) */
   const visibleStores = useMemo(() => {
     const list = STORE_ORDER.filter((slug) => activeStores[slug]);
     return list.length ? list : STORE_ORDER;
   }, [activeStores]);
 
-  /* -----------------------------
-     BÚSQUEDA AVANZADA (multi selección con sugerencias)
-     ----------------------------- */
-  // texto actual del input
-  const [qText, setQText] = useState('');
-  // set de productos seleccionados (chips)
-  const [selectedNames, setSelectedNames] = useState([]);
-
-  // refs para dropdown y manejo de blur/click afuera
-  const acWrapRef = useRef(null); // contenedor relativo
-  const inputRef = useRef(null);
-  const [openAC, setOpenAC] = useState(false);
-
-  // lista de sugerencias (superpuesta), hasta 10 opciones
-  const suggestions = useMemo(() => {
-    const q = norm(qText);
-    if (!q) return [];
-    const all = Object.keys(productos);
-    return all
-      .filter((name) => norm(name).includes(q))
-      .slice(0, 10);
-  }, [qText, productos]);
-
-  // añadir selección (chip)
-  const addSelection = (name) => {
-    setSelectedNames((prev) =>
-      prev.includes(name) ? prev : [...prev, name]
-    );
-    setQText('');
-    setOpenAC(false);
-    // mantén el foco para poder seguir tipeando rápido en móvil/desktop:
-    requestAnimationFrame(() => inputRef.current?.focus());
-  };
-
-  // quitar selección
-  const removeSelection = (name) =>
-    setSelectedNames((prev) => prev.filter((n) => n !== name));
-
-  // limpiar todas las selecciones
-  const clearSelections = () => setSelectedNames([]);
-
-  // cerrar sugerencias con click afuera o Esc
-  useEffect(() => {
-    const onDocClick = (e) => {
-      if (!acWrapRef.current) return;
-      if (!acWrapRef.current.contains(e.target)) {
-        setOpenAC(false);
-      }
-    };
-    const onEsc = (e) => e.key === 'Escape' && setOpenAC(false);
-    document.addEventListener('mousedown', onDocClick);
-    document.addEventListener('keydown', onEsc);
-    return () => {
-      document.removeEventListener('mousedown', onDocClick);
-      document.removeEventListener('keydown', onEsc);
-    };
-  }, []);
-
-  // FIX iOS Safari zoom: el zoom “automático” ocurre si el font-size del input < 16px.
-  // En CSS ya forzamos 16px, pero por si acaso aseguramos también vía inline style.
-  const inputStyleIOS = { fontSize: 16 };
-
-  /* -----------------------------
-     Filtrado + orden
-     ----------------------------- */
-  // Si hay seleccionados, filtramos SOLO por esos; si no, mostramos todo con categoría/orden
+  /* Filtro + orden */
+  const qn = norm(q);
   const filteredSorted = useMemo(() => {
-    let entries = Object.entries(productos);
+    let list = Object.entries(productos);
 
-    if (selectedNames.length > 0) {
-      const setSel = new Set(selectedNames);
-      entries = entries.filter(([name]) => setSel.has(name));
-    } else {
-      // si no hay chips, puede usarse categoría u orden + texto libre (qText)
-      const q = norm(qText);
-      if (q) {
-        entries = entries.filter(([name, info]) => {
-          const n = norm(name);
-          const c = norm(info.categoria || '');
-          return n.includes(q) || c.includes(q);
-        });
-      }
+    // Buscar en nombre/categoría
+    if (qn) {
+      list = list.filter(([nombre, info]) => {
+        const n = norm(nombre);
+        const c = norm(info.categoria || '');
+        return n.includes(qn) || c.includes(qn);
+      });
     }
 
-    // categoría
+    // Categoría
     if (category !== 'todas') {
-      entries = entries.filter(([, info]) => info.categoria === category);
+      list = list.filter(([, info]) => info.categoria === category);
     }
 
-    // orden
+    // Orden
     if (order === 'name-asc' || order === 'name-desc') {
-      entries.sort(([a], [b]) =>
+      list.sort(([a], [b]) =>
         order === 'name-asc' ? a.localeCompare(b) : b.localeCompare(a)
       );
     } else {
-      entries.sort(([, A], [, B]) => {
+      list.sort(([, A], [, B]) => {
         const minA = cheapestVisible(A.precios, visibleStores);
         const minB = cheapestVisible(B.precios, visibleStores);
         const va = minA ?? Number.POSITIVE_INFINITY;
@@ -216,131 +151,96 @@ export default function Productos() {
       });
     }
 
-    // paginado simple (solo contamos, la tabla muestra todo; si quisieras, corta aquí con slice)
-    return entries;
-  }, [productos, selectedNames, qText, category, order, visibleStores]);
+    return list;
+  }, [productos, qn, category, order, visibleStores]);
 
-  // precio mínimo entre tiendas visibles
   function cheapestVisible(precios, stores) {
     const vals = stores.map((s) => precios[s]).filter((v) => v != null);
     return vals.length ? Math.min(...vals) : null;
   }
 
-  // totales por tienda (selección)
-  const totalsByStore = useMemo(() => {
-    if (selectedNames.length === 0) return null;
-    const totals = Object.fromEntries(visibleStores.map((s) => [s, 0]));
-    selectedNames.forEach((name) => {
-      const info = productos[name];
-      if (!info) return;
-      visibleStores.forEach((s) => {
-        const v = info.precios[s];
-        if (typeof v === 'number') totals[s] += v;
-        else totals[s] = totals[s] ?? null;
-      });
-    });
-    return totals;
-  }, [selectedNames, productos, visibleStores]);
-
   /* -----------------------------
-     Tiendas (UI)
+     Acciones
      ----------------------------- */
-  const [openStores, setOpenStores] = useState(false);
-  const toggleStore = (slug) =>
+  const toggleStore = (slug) => {
     setActiveStores((prev) => ({ ...prev, [slug]: !prev[slug] }));
+    setOpenMenu(null); // cerrar al elegir
+  };
 
-  const selectAllStores = () =>
+  const selectAllStores = () => {
     setActiveStores({ lider: true, jumbo: true, unimarc: true, 'santa-isabel': true });
-  const clearAllStores = () =>
+    setOpenMenu(null);
+  };
+
+  const clearAllStores = () => {
     setActiveStores({ lider: false, jumbo: false, unimarc: false, 'santa-isabel': false });
+    setOpenMenu(null);
+  };
 
-  /* -----------------------------
-     Exportar / Compartir búsqueda
-     ----------------------------- */
-  const [openExport, setOpenExport] = useState(false);
-  const [openPageSize, setOpenPageSize] = useState(false);
-  const [toast, setToast] = useState('');
+  const clearFilters = () => {
+    setQ('');
+    setCategory('todas');
+    setOrder('price-asc');
+    setActiveStores({ lider: true, jumbo: true, unimarc: true, 'santa-isabel': true });
+  };
 
-  const copyTable = async () => {
+  const copyView = async () => {
     try {
-      const headers = ['Producto', 'Formato', ...visibleStores.map((s) => STORE_META[s]?.label ?? s)];
-      const lines = [headers.join('\t')];
-      filteredSorted.forEach(([name, info]) => {
-        const row = [
-          name,
-          info.formato || '—',
-          ...visibleStores.map((s) => {
-            const v = info.precios[s];
-            return typeof v === 'number' ? v : '';
-          }),
-        ];
-        lines.push(row.join('\t'));
-      });
-      await navigator.clipboard.writeText(lines.join('\n'));
-      showToast('Tabla copiada');
-    } catch {
+      const url = new URL(window.location.href);
+      url.searchParams.set('q', q);
+      url.searchParams.set('cat', category);
+      url.searchParams.set('ord', order);
+      await navigator.clipboard.writeText(url.toString());
+      showToast('Se copió el link de búsqueda');
+    } catch (e) {
       showToast('No se pudo copiar');
     }
   };
 
-  const downloadCSV = () => {
-    const headers = ['Producto', 'Formato', ...visibleStores.map((s) => STORE_META[s]?.label ?? s)];
-    const lines = [headers.join(',')];
-    filteredSorted.forEach(([name, info]) => {
-      const row = [
-        `"${name.replace(/"/g, '""')}"`,
-        `"${(info.formato || '—').replace(/"/g, '""')}"`,
-        ...visibleStores.map((s) => info.precios[s] ?? ''),
-      ];
-      lines.push(row.join(','));
-    });
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'bipi_productos.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const downloadExcel = () => {
-    // CSV compatible con Excel
-    downloadCSV();
-  };
-
-  const shareSearch = async () => {
-    const url = new URL(window.location.href);
-    url.searchParams.delete('q');
-    url.searchParams.delete('sel');
-
-    if (selectedNames.length) url.searchParams.set('sel', encodeURIComponent(selectedNames.join('|')));
-    const final = url.toString();
-    try {
-      await navigator.clipboard.writeText(final);
-      showToast('Se copió el link de búsqueda');
-    } catch {
-      showToast('No se pudo copiar el link');
-    }
-  };
-
-  function showToast(msg) {
+  const [toast, setToast] = useState('');
+  const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(''), 2000);
-  }
+  };
 
-  /* -----------------------------
-     Restaurar selección desde URL
-     ----------------------------- */
+  /* Cerrar popovers al hacer click afuera */
   useEffect(() => {
-    try {
-      const u = new URL(window.location.href);
-      const sel = u.searchParams.get('sel');
-      if (sel) {
-        const list = decodeURIComponent(sel).split('|').map((s) => s.trim()).filter(Boolean);
-        setSelectedNames(Array.from(new Set(list)));
-      }
-    } catch {}
+    const onDown = (e) => {
+      const t = e.target;
+      const wrap = toolbarRef.current;
+      if (!wrap || !wrap.contains(t)) setOpenMenu(null);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
+    };
   }, []);
+
+  /* Abrir/cerrar un popover y cerrar los otros */
+  const toggleMenu = useCallback((id) => {
+    setOpenMenu((prev) => (prev === id ? null : id));
+  }, []);
+
+  /* Autocomplete: abrir al focus, cerrar con click fuera o selección */
+  useEffect(() => {
+    const handler = (e) => {
+      const w = inputWrapRef.current;
+      if (!w || !w.contains(e.target)) setShowAuto(false);
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
+  }, []);
+
+  const onSelectSuggestion = (name) => {
+    setQ(name);
+    setShowAuto(false);
+  };
 
   /* -----------------------------
      Render
@@ -352,89 +252,48 @@ export default function Productos() {
       </h1>
 
       {/* ====== TOOLBAR ====== */}
-      <section className="toolbar">
-        {/* fila 1: BUSCAR + CATEGORÍA + ORDEN */}
+      <section ref={toolbarRef} className="toolbar">
+        {/* fila 1: buscador + categoría + ordenar */}
         <div className="toolbar-row">
-          {/* Buscar con autocompletado superpuesto */}
-          <div className="toolbar-group ac-wrap" ref={acWrapRef} style={{ flex: 1, minWidth: 260 }}>
-            <label className="toolbar-label" htmlFor="buscar">
-              Buscar
-            </label>
+          {/* BUSCAR */}
+          <div className="toolbar-group" style={{ flex: 1, minWidth: 260 }}>
+            <label className="toolbar-label" htmlFor="buscar">Buscar</label>
 
-            <input
-              id="buscar"
-              ref={inputRef}
-              className="toolbar-input"
-              style={inputStyleIOS}
-              value={qText}
-              onFocus={() => setOpenAC(!!qText)}
-              onChange={(e) => {
-                setQText(e.target.value);
-                setOpenAC(true);
-              }}
-              placeholder="Ej: arroz, aceite, papel, sal…"
-              autoComplete="off"
-              inputMode="search"
-            />
+            <div ref={inputWrapRef} className="input-relative">
+              <input
+                id="buscar"
+                className="toolbar-input"
+                value={q}
+                onFocus={() => setShowAuto(true)}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Ej: arroz, aceite, papel, sal…"
+                inputMode="search"
+              />
 
-            {/* Chips seleccionados */}
-            {selectedNames.length > 0 && (
-              <div className="chips-selected">
-                {selectedNames.map((name) => (
-                  <span className="chip chip-selected" key={name}>
-                    {name}
+              {/* Sugerencias */}
+              {showAuto && suggestions.length > 0 && (
+                <div className="autocomplete">
+                  {suggestions.map((name) => (
                     <button
-                      className="chip-x"
-                      aria-label={`Quitar ${name}`}
-                      onClick={() => removeSelection(name)}
+                      key={name}
+                      type="button"
+                      className="autocomplete__item"
+                      // mousedown evita que se pierda el foco antes del click en móvil
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onSelectSuggestion(name);
+                      }}
+                      onClick={() => onSelectSuggestion(name)}
                     >
-                      ×
+                      {name}
                     </button>
-                  </span>
-                ))}
-
-                <button
-                  className="btn btn-ghost btn-sm"
-                  type="button"
-                  onClick={() => {
-                    clearSelections();
-                    setQText('');
-                    inputRef.current?.focus();
-                  }}
-                >
-                  Limpiar búsqueda
-                </button>
-              </div>
-            )}
-
-            {/* MENÚ DE SUGERENCIAS (superpuesto, NO empuja layout) */}
-            {openAC && suggestions.length > 0 && (
-              <div className="ac-menu" role="listbox" aria-label="Sugerencias">
-                {suggestions.map((name) => (
-                  <button
-                    key={name}
-                    className="ac-item"
-                    role="option"
-                    // Usamos onMouseDown para capturar ANTES del blur y evitar saltos
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      addSelection(name);
-                    }}
-                    onTouchStart={(e) => {
-                      // iOS: misma idea para evitar que se cierre por blur
-                      e.preventDefault();
-                      addSelection(name);
-                    }}
-                    tabIndex={-1}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Categoría */}
+          {/* CATEGORÍA */}
           <div className="toolbar-group">
             <label className="toolbar-label" htmlFor="categoria">Categoría</label>
             <select
@@ -444,14 +303,12 @@ export default function Productos() {
               onChange={(e) => setCategory(e.target.value)}
             >
               {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c === 'todas' ? 'Todas' : c}
-                </option>
+                <option key={c} value={c}>{c === 'todas' ? 'Todas' : c}</option>
               ))}
             </select>
           </div>
 
-          {/* Orden */}
+          {/* ORDENAR */}
           <div className="toolbar-group">
             <label className="toolbar-label" htmlFor="ordenar">Ordenar</label>
             <select
@@ -467,66 +324,72 @@ export default function Productos() {
           </div>
         </div>
 
-        {/* fila 2: tiendas / filas / exportar / compartir / limpiar */}
-        <div className="toolbar-row actions-row" style={{ gap: 10 }}>
-          {/* Tiendas (popover) */}
-          <div className="toolbar__export" style={{ position: 'relative' }}>
+        {/* fila 2: popovers + acciones */}
+        <div className="toolbar-row actions-row" style={{ justifyContent: 'flex-start', gap: 10 }}>
+          {/* Tiendas */}
+          <div className="toolbar__dropdown">
             <button
-              className="btn btn-secondary btn-sm"
               type="button"
-              onClick={() => setOpenStores((s) => !s)}
-              aria-expanded={openStores}
+              className="btn btn-secondary btn-sm"
+              onClick={() => toggleMenu('stores')}
+              aria-expanded={openMenu === 'stores'}
             >
-              Tiendas ({visibleStores.length}) ▾
+              Tiendas ({STORE_ORDER.filter((s) => activeStores[s]).length})
+              <span aria-hidden> ▾</span>
             </button>
-            <div className={`export-menu ${openStores ? 'show' : ''}`} style={{ minWidth: 260 }}>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                <button className="btn btn-ghost btn-sm" type="button" onClick={selectAllStores}>
+
+            <div className={`menu-pop ${openMenu === 'stores' ? 'show' : ''}`} role="menu">
+              <div className="menu-pop__header">
+                <button type="button" className="btn btn-ghost btn-sm" onClick={selectAllStores}>
                   Seleccionar todas
                 </button>
-                <button className="btn btn-ghost btn-sm" type="button" onClick={clearAllStores}>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={clearAllStores}>
                   Quitar todas
                 </button>
               </div>
-              {STORE_ORDER.map((slug) => {
-                const on = activeStores[slug];
-                const label = STORE_META[slug]?.label ?? slug;
-                return (
-                  <button
-                    key={slug}
-                    type="button"
-                    className={`chip ${on ? 'chip-active' : ''}`}
-                    onClick={() => toggleStore(slug)}
-                    aria-pressed={on}
-                    style={{ justifyContent: 'space-between' }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
+
+              <div className="menu-pop__grid">
+                {STORE_ORDER.map((slug) => {
+                  const on = activeStores[slug];
+                  const label = STORE_META[slug]?.label ?? slug;
+                  return (
+                    <button
+                      key={slug}
+                      type="button"
+                      className={`chip ${on ? 'chip-active' : ''}`}
+                      onClick={() => toggleStore(slug)}
+                      role="menuitem"
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          {/* Filas por página (popover) */}
-          <div className="toolbar__export" style={{ position: 'relative' }}>
+          {/* Filas por página */}
+          <div className="toolbar__dropdown">
             <button
-              className="btn btn-secondary btn-sm"
               type="button"
-              onClick={() => setOpenPageSize((s) => !s)}
-              aria-expanded={openPageSize}
+              className="btn btn-secondary btn-sm"
+              onClick={() => toggleMenu('rows')}
+              aria-expanded={openMenu === 'rows'}
             >
-              Filas: {pageSize} ▾
+              Filas: {pageSize} <span aria-hidden> ▾</span>
             </button>
-            <div className={`export-menu ${openPageSize ? 'show' : ''}`}>
+
+            <div className={`menu-pop ${openMenu === 'rows' ? 'show' : ''}`} role="menu">
               {[10, 25, 50, 100].map((n) => (
                 <button
                   key={n}
-                  className={`chip ${n === pageSize ? 'chip-active' : ''}`}
                   type="button"
+                  className="menu-pop__item"
                   onClick={() => {
                     setPageSize(n);
-                    setOpenPageSize(false);
+                    setOpenMenu(null); // cerrar al elegir
                   }}
+                  role="menuitem"
                 >
                   {n}
                 </button>
@@ -534,47 +397,109 @@ export default function Productos() {
             </div>
           </div>
 
-          {/* Exportar (popover) */}
-          <div className="toolbar__export" style={{ position: 'relative' }}>
+          {/* Exportar */}
+          <div className="toolbar__dropdown">
             <button
-              className="btn btn-secondary btn-sm"
               type="button"
-              onClick={() => setOpenExport((s) => !s)}
-              aria-expanded={openExport}
+              className="btn btn-secondary btn-sm"
+              onClick={() => toggleMenu('export')}
+              aria-expanded={openMenu === 'export'}
             >
-              Exportar ▾
+              Exportar <span aria-hidden> ▾</span>
             </button>
-            <div className={`export-menu ${openExport ? 'show' : ''}`}>
-              <button className="btn btn-ghost btn-sm" type="button" onClick={copyTable}>
+
+            <div className={`menu-pop ${openMenu === 'export' ? 'show' : ''}`} role="menu">
+              <button
+                type="button"
+                className="menu-pop__item"
+                onClick={async () => {
+                  // Copiar tabla (texto)
+                  try {
+                    const lines = [
+                      ['Producto', 'Formato', ...visibleStores.map((s) => STORE_META[s]?.label ?? s)].join('\t'),
+                      ...filteredSorted.map(([nombre, info]) => {
+                        const cols = visibleStores.map((s) =>
+                          info.precios[s] != null ? Number(info.precios[s]) : ''
+                        );
+                        return [nombre, info.formato || '', ...cols].join('\t');
+                      }),
+                    ];
+                    await navigator.clipboard.writeText(lines.join('\n'));
+                    showToast('Tabla copiada');
+                  } catch {
+                    showToast('No se pudo copiar');
+                  }
+                  setOpenMenu(null);
+                }}
+                role="menuitem"
+              >
                 Copiar
               </button>
-              <button className="btn btn-ghost btn-sm" type="button" onClick={downloadCSV}>
+
+              <button
+                type="button"
+                className="menu-pop__item"
+                onClick={() => {
+                  // CSV
+                  const header = ['Producto', 'Formato', ...visibleStores.map((s) => STORE_META[s]?.label ?? s)];
+                  const rowsCsv = filteredSorted.map(([nombre, info]) => {
+                    const cols = visibleStores.map((s) =>
+                      info.precios[s] != null ? Number(info.precios[s]) : ''
+                    );
+                    return [nombre, info.formato || '', ...cols];
+                  });
+                  const csv = [header, ...rowsCsv]
+                    .map((r) => r.map((x) => `"${String(x).replaceAll('"', '""')}"`).join(','))
+                    .join('\n');
+                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                  const a = document.createElement('a');
+                  a.href = URL.createObjectURL(blob);
+                  a.download = 'bipi_productos.csv';
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                  setOpenMenu(null);
+                }}
+                role="menuitem"
+              >
                 CSV
               </button>
-              <button className="btn btn-ghost btn-sm" type="button" onClick={downloadExcel}>
+
+              <button
+                type="button"
+                className="menu-pop__item"
+                onClick={() => {
+                  // Excel (CSV con .xls para compat)
+                  const header = ['Producto', 'Formato', ...visibleStores.map((s) => STORE_META[s]?.label ?? s)];
+                  const rowsCsv = filteredSorted.map(([nombre, info]) => {
+                    const cols = visibleStores.map((s) =>
+                      info.precios[s] != null ? Number(info.precios[s]) : ''
+                    );
+                    return [nombre, info.formato || '', ...cols];
+                  });
+                  const csv = [header, ...rowsCsv]
+                    .map((r) => r.map((x) => `"${String(x).replaceAll('"', '""')}"`).join(','))
+                    .join('\n');
+                  const blob = new Blob([csv], { type: 'application/vnd.ms-excel' });
+                  const a = document.createElement('a');
+                  a.href = URL.createObjectURL(blob);
+                  a.download = 'bipi_productos.xls';
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                  setOpenMenu(null);
+                }}
+                role="menuitem"
+              >
                 Excel
               </button>
             </div>
           </div>
 
-          <button className="btn btn-secondary btn-sm" type="button" onClick={shareSearch}>
+          {/* Compartir + Limpiar */}
+          <button type="button" className="btn btn-secondary btn-sm" onClick={copyView}>
             Compartir búsqueda
           </button>
 
-          <button
-            className="btn btn-ghost btn-sm"
-            type="button"
-            onClick={() => {
-              setCategory('todas');
-              setOrder('price-asc');
-              setOpenExport(false);
-              setOpenPageSize(false);
-              setOpenStores(false);
-              setQText('');
-              clearSelections();
-              selectAllStores();
-            }}
-          >
+          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
             Limpiar filtros
           </button>
         </div>
@@ -582,18 +507,13 @@ export default function Productos() {
         {/* contador */}
         <div className="toolbar-row" style={{ marginBottom: 0 }}>
           <span className="muted">
-            {Math.min(filteredSorted.length, pageSize)} de {filteredSorted.length} producto
-            {filteredSorted.length === 1 ? '' : 's'} listados
+            {filteredSorted.length} producto{filteredSorted.length === 1 ? '' : 's'} encontrados
           </span>
         </div>
       </section>
 
-      {/* Errores */}
-      {err && (
-        <p style={{ color: 'red', marginTop: 8 }}>
-          Error al cargar datos: {err}
-        </p>
-      )}
+      {toast && <div className="toast" role="status" aria-live="polite">{toast}</div>}
+      {err && <p style={{ color: 'red', marginTop: 8 }}>Error al cargar datos: {err}</p>}
 
       {/* ====== TABLA ====== */}
       <div style={{ overflowX: 'auto', marginTop: 10 }}>
@@ -613,16 +533,13 @@ export default function Productos() {
           <tbody>
             {filteredSorted.length === 0 && (
               <tr>
-                <td
-                  colSpan={2 + visibleStores.length}
-                  style={{ padding: 16, color: '#6B7280', textAlign: 'center' }}
-                >
-                  No se encontraron productos para los filtros actuales.
+                <td colSpan={2 + visibleStores.length} style={{ padding: 16, color: '#6B7280', textAlign: 'center' }}>
+                  No se encontraron productos para la búsqueda/filters actuales.
                 </td>
               </tr>
             )}
 
-            {filteredSorted.slice(0, pageSize).map(([nombre, info]) => {
+            {filteredSorted.map(([nombre, info]) => {
               const min = cheapestVisible(info.precios, visibleStores);
               return (
                 <tr key={nombre}>
@@ -648,20 +565,6 @@ export default function Productos() {
                 </tr>
               );
             })}
-
-            {/* Totales por tienda para la selección */}
-            {totalsByStore && (
-              <tr>
-                <td colSpan={2} style={{ fontWeight: 800 }}>
-                  Total por tienda (selección)
-                </td>
-                {visibleStores.map((s) => (
-                  <td key={s} style={{ textAlign: 'right', fontWeight: 800 }}>
-                    {typeof totalsByStore[s] === 'number' ? CLP(totalsByStore[s]) : '—'}
-                  </td>
-                ))}
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
@@ -669,9 +572,6 @@ export default function Productos() {
       <p className="muted" style={{ marginTop: 14 }}>
         Nota: precios referenciales del MVP. Pueden variar por tienda y ciudad.
       </p>
-
-      {/* Toast */}
-      {toast && <div className="toast">{toast}</div>}
     </main>
   );
 }

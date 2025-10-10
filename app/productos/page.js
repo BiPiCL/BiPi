@@ -15,17 +15,10 @@ const supabase = createClient(
    Utilidades
    =========================== */
 const norm = (s = '') =>
-  s
-    .toString()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim();
+  s.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
-const CLP = (v) =>
-  typeof v === 'number' ? `$${Number(v).toLocaleString('es-CL')}` : '—';
+const CLP = (v) => (typeof v === 'number' ? `$${Number(v).toLocaleString('es-CL')}` : '—');
 
-/* Tiendas */
 const STORE_META = {
   lider: { label: 'Líder' },
   jumbo: { label: 'Jumbo' },
@@ -34,7 +27,6 @@ const STORE_META = {
 };
 const STORE_ORDER = ['lider', 'jumbo', 'unimarc', 'santa-isabel'];
 
-/* Opciones de orden */
 const ORDER_OPTIONS = [
   { id: 'price-asc', label: 'Precio (Menor a Mayor) ↑' },
   { id: 'price-desc', label: 'Precio (Mayor a Menor) ↓' },
@@ -42,40 +34,34 @@ const ORDER_OPTIONS = [
   { id: 'name-desc', label: 'Nombre Z → A' },
 ];
 
-/* Helpers Export */
-function download(filename, text) {
-  const el = document.createElement('a');
-  el.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-  el.setAttribute('download', filename);
-  el.style.display = 'none';
-  document.body.appendChild(el);
-  el.click();
-  document.body.removeChild(el);
-}
-function toCSV(headers, rows) {
-  const esc = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
-  const head = headers.map(esc).join(',');
-  const body = rows.map((r) => r.map(esc).join(',')).join('\n');
-  return head + '\n' + body;
+/* Botones utilitarios */
+function PillButton({ children, onClick, ariaExpanded, title }) {
+  return (
+    <button
+      type="button"
+      className="chip"
+      onClick={onClick}
+      aria-expanded={ariaExpanded}
+      title={title}
+    >
+      {children}
+      {typeof ariaExpanded === 'boolean' ? <span aria-hidden> ▾</span> : null}
+    </button>
+  );
 }
 
 export default function Productos() {
   /* -----------------------------
-     Estado de datos
+     Estado de datos y filtros
      ----------------------------- */
   const [rows, setRows] = useState([]);
   const [err, setErr] = useState(null);
 
-  /* -----------------------------
-     Filtros y UI
-     ----------------------------- */
-  // términos seleccionados: { raw:'Arroz grado 1', key:'arroz grado 1' }
-  const [terms, setTerms] = useState([]);
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState('');               // texto en el input
+  const [tokens, setTokens] = useState([]);     // chips de productos seleccionados
 
   const [category, setCategory] = useState('todas');
   const [order, setOrder] = useState('price-asc');
-  const [rowsLimit, setRowsLimit] = useState(25);
 
   const [activeStores, setActiveStores] = useState({
     lider: true,
@@ -84,23 +70,20 @@ export default function Productos() {
     'santa-isabel': true,
   });
 
-  // popovers
-  const [expOpen, setExpOpen] = useState(false);
-  const [rowsOpen, setRowsOpen] = useState(false);
-  const [storesOpen, setStoresOpen] = useState(false);
-
-  // autocomplete
-  const [suggestOpen, setSuggestOpen] = useState(false);
-  const [highlight, setHighlight] = useState(-1);
-
-  // toast
-  const [toast, setToast] = useState('');
-
-  const exportRef = useRef(null);
-  const rowsRef = useRef(null);
-  const storesRef = useRef(null);
-  const suggestRef = useRef(null);
+  // UI/refs para móvil
+  const toolbarRef = useRef(null);
   const inputRef = useRef(null);
+  const suggestRef = useRef(null);
+  const inputWrapRef = useRef(null);
+
+  // Popovers (exportar, filas)
+  const [openExport, setOpenExport] = useState(false);
+  const [openRows, setOpenRows] = useState(false);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+
+  // Sugerencias
+  const [openSuggest, setOpenSuggest] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
 
   /* -----------------------------
      Carga de datos
@@ -109,9 +92,7 @@ export default function Productos() {
     (async () => {
       const { data, error } = await supabase
         .from('product_price_matrix')
-        .select(
-          'product_id, producto, categoria, formato, tienda_slug, tienda, precio_clp'
-        )
+        .select('product_id, producto, categoria, formato, tienda_slug, tienda, precio_clp')
         .order('producto', { ascending: true });
 
       if (error) setErr(error.message);
@@ -120,19 +101,19 @@ export default function Productos() {
   }, []);
 
   /* -----------------------------
-     Derivados: categorías y productos únicos
+     Catálogo y categorías
      ----------------------------- */
+  // catálogo único de nombres (para autocompletar)
+  const catalogo = useMemo(() => {
+    const set = new Set();
+    rows.forEach((r) => set.add(r.producto));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'));
+  }, [rows]);
+
   const categories = useMemo(() => {
     const set = new Set();
     rows.forEach((r) => r.categoria && set.add(r.categoria));
-    return ['todas', ...Array.from(set).sort((a, b) => a.localeCompare(b))];
-  }, [rows]);
-
-  // lista única de nombres de producto (para sugerencias)
-  const allProductNames = useMemo(() => {
-    const set = new Set();
-    rows.forEach((r) => set.add(r.producto));
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    return ['todas', ...Array.from(set).sort((a, b) => a.localeCompare(b, 'es'))];
   }, [rows]);
 
   /* -----------------------------
@@ -151,7 +132,7 @@ export default function Productos() {
       }
       map[key].precios[r.tienda_slug] = r.precio_clp;
     });
-    return map;
+    return map; // { nombre: {categoria, formato, precios} }
   }, [rows]);
 
   /* -----------------------------
@@ -163,78 +144,112 @@ export default function Productos() {
   }, [activeStores]);
 
   /* -----------------------------
-     Términos (chips) + buscador
+     SUGERENCIAS (overlay)
      ----------------------------- */
-  const addTermFree = () => {
-    const t = q.trim();
-    const key = norm(t);
-    if (!t) return;
-    if (!terms.some((k) => k.key === key)) {
-      setTerms((prev) => [...prev, { raw: t, key }]);
-    }
-    setQ('');
-    setSuggestOpen(false);
-    setHighlight(-1);
-  };
-
-  const addTermExact = (rawValue) => {
-    const key = norm(rawValue);
-    if (!terms.some((k) => k.key === key)) {
-      setTerms((prev) => [...prev, { raw: rawValue, key }]);
-    }
-    setQ('');
-    setSuggestOpen(false);
-    setHighlight(-1);
-    inputRef.current?.focus();
-  };
-
-  const removeTerm = (key) => setTerms((prev) => prev.filter((x) => x.key !== key));
-  const clearSearch = () => {
-    setQ('');
-    setSuggestOpen(false);
-    setTerms([]);
-    setHighlight(-1);
-  };
-
-  // Sugerencias (hasta 10)
-  const suggestions = useMemo(() => {
+  const filteredSuggestions = useMemo(() => {
     const nq = norm(q);
     if (!nq) return [];
-    const out = allProductNames.filter((name) => norm(name).includes(nq));
-    return out.slice(0, 10);
-  }, [q, allProductNames]);
+    // Evitar sugerir algo ya seleccionado
+    const chosen = new Set(tokens.map((t) => t.nombre));
+    return catalogo
+      .filter((name) => !chosen.has(name) && norm(name).includes(nq))
+      .slice(0, 12);
+  }, [q, catalogo, tokens]);
+
+  // Cierra cualquier popover/sugerencia al click afuera
+  useEffect(() => {
+    function onDocClick(e) {
+      if (openExport || openRows || openSuggest) {
+        const inExport = e.target.closest?.('.popover-export');
+        const inRows = e.target.closest?.('.popover-rows');
+        const inSuggest = e.target.closest?.('.suggest-panel');
+        const inInputWrap = e.target.closest?.('.input-with-suggest');
+        if (!inExport) setOpenExport(false);
+        if (!inRows) setOpenRows(false);
+        if (!inSuggest && !inInputWrap) setOpenSuggest(false);
+      }
+    }
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, [openExport, openRows, openSuggest]);
+
+  // Teclas en input (flechas / Enter / Esc)
+  function onInputKeyDown(e) {
+    if (!openSuggest && filteredSuggestions.length) {
+      // abrir con flecha o escribir
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        setOpenSuggest(true);
+        e.preventDefault();
+        return;
+      }
+    }
+
+    if (openSuggest && filteredSuggestions.length) {
+      if (e.key === 'ArrowDown') {
+        setActiveIndex((i) => Math.min(i + 1, filteredSuggestions.length - 1));
+        e.preventDefault();
+      } else if (e.key === 'ArrowUp') {
+        setActiveIndex((i) => Math.max(i - 1, 0));
+        e.preventDefault();
+      } else if (e.key === 'Enter') {
+        const pick = filteredSuggestions[activeIndex >= 0 ? activeIndex : 0];
+        if (pick) addToken(pick);
+        e.preventDefault();
+      } else if (e.key === 'Escape') {
+        setOpenSuggest(false);
+        inputRef.current?.blur();
+      }
+    }
+  }
+
+  function addToken(nombre) {
+    if (!nombre) return;
+    if (!tokens.find((t) => t.nombre === nombre)) {
+      setTokens((prev) => [...prev, { nombre }]);
+    }
+    setQ('');
+    setOpenSuggest(false);
+    // Quitar foco para que iOS cierre teclado y “des-zoomee”
+    inputRef.current?.blur();
+    // Reposicionar suavemente para que no quede la pantalla con zoom
+    setTimeout(() => {
+      const top = (toolbarRef.current?.offsetTop || 0) - 12;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }, 50);
+  }
+
+  function removeToken(nombre) {
+    setTokens((prev) => prev.filter((t) => t.nombre !== nombre));
+  }
+
+  function clearTokens() {
+    setTokens([]);
+  }
 
   /* -----------------------------
-     Filtrar + ordenar
+     Filtrado + Orden
      ----------------------------- */
-  const filteredEntries = useMemo(() => {
+  const qn = norm(q);
+  const filteredSorted = useMemo(() => {
     let list = Object.entries(productos);
 
-    // Filtro: chips (OR) o texto libre
-    if (terms.length > 0) {
-      list = list.filter(([nombre]) => {
-        const n = norm(nombre);
-        return terms.some((t) => n.includes(t.key));
-      });
-    } else if (q) {
-      const nq = norm(q);
+    // si hay tokens, filtramos por esos nombres exactos
+    if (tokens.length) {
+      const pick = new Set(tokens.map((t) => t.nombre));
+      list = list.filter(([name]) => pick.has(name));
+    } else if (qn) {
+      // si no hay tokens, permitir buscar por texto (fallback)
       list = list.filter(([nombre, info]) => {
         const n = norm(nombre);
         const c = norm(info.categoria || '');
-        return n.includes(nq) || c.includes(nq);
+        return n.includes(qn) || c.includes(qn);
       });
     }
 
-    // Filtro categoría
-    if (category !== 'todas') {
-      list = list.filter(([, info]) => info.categoria === category);
-    }
+    if (category !== 'todas') list = list.filter(([, info]) => info.categoria === category);
 
-    // Orden
     if (order === 'name-asc' || order === 'name-desc') {
-      list.sort(([a], [b]) =>
-        order === 'name-asc' ? a.localeCompare(b) : b.localeCompare(a)
-      );
+      list.sort(([a], [b]) => (order === 'name-asc' ? a.localeCompare(b, 'es') : b.localeCompare(a, 'es')));
     } else {
       list.sort(([, A], [, B]) => {
         const minA = cheapestVisible(A.precios, visibleStores);
@@ -246,12 +261,7 @@ export default function Productos() {
     }
 
     return list;
-  }, [productos, q, terms, category, order, visibleStores]);
-
-  const pagedEntries = useMemo(
-    () => filteredEntries.slice(0, rowsLimit),
-    [filteredEntries, rowsLimit]
-  );
+  }, [productos, qn, tokens, category, order, visibleStores]);
 
   function cheapestVisible(precios, stores) {
     const vals = stores.map((s) => precios[s]).filter((v) => v != null);
@@ -259,185 +269,57 @@ export default function Productos() {
   }
 
   /* -----------------------------
-     Tiendas helpers y limpiar
-     ----------------------------- */
-  const toggleStore = (slug) =>
-    setActiveStores((prev) => ({ ...prev, [slug]: !prev[slug] }));
-  const selectAllStores = () =>
-    setActiveStores({ lider: true, jumbo: true, unimarc: true, 'santa-isabel': true });
-  const unselectAllStores = () =>
-    setActiveStores({ lider: false, jumbo: false, unimarc: false, 'santa-isabel': false });
-
-  const clearFilters = () => {
-    setQ('');
-    setSuggestOpen(false);
-    setTerms([]);
-    setCategory('todas');
-    setOrder('price-asc');
-    setRowsLimit(25);
-    selectAllStores();
-  };
-
-  /* -----------------------------
-     Totales por supermercado
+     Totales por tienda (suma de tokens)
      ----------------------------- */
   const totalsByStore = useMemo(() => {
-    const totals = Object.fromEntries(STORE_ORDER.map((s) => [s, 0]));
-    filteredEntries.forEach(([, info]) => {
-      STORE_ORDER.forEach((s) => {
+    if (!tokens.length) return null;
+    const totals = {};
+    visibleStores.forEach((s) => (totals[s] = 0));
+
+    tokens.forEach((t) => {
+      const info = productos[t.nombre];
+      if (!info) return;
+      visibleStores.forEach((s) => {
         const val = info.precios[s];
         if (typeof val === 'number') totals[s] += val;
+        else totals[s] = totals[s] + 0; // mantiene NaN fuera
       });
     });
     return totals;
-  }, [filteredEntries]);
-
-  const minTotal = useMemo(() => {
-    const vals = STORE_ORDER.map((s) => totalsByStore[s]).filter((v) => v > 0);
-    return vals.length ? Math.min(...vals) : null;
-  }, [totalsByStore]);
+  }, [tokens, productos, visibleStores]);
 
   /* -----------------------------
-     Compartir búsqueda con filtros
+     Compartir búsqueda (toast)
      ----------------------------- */
-  function buildShareUrl() {
-    const base = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin) + '/productos';
+  const [toast, setToast] = useState(null);
+
+  function shareCurrentView() {
     const params = new URLSearchParams();
-    // términos seleccionados (raw) separados por |
-    if (terms.length) {
-      params.set('t', terms.map((x) => x.raw).join('|'));
-    }
-    // texto libre si no hay términos
-    if (!terms.length && q.trim()) params.set('q', q.trim());
+    if (tokens.length) params.set('q', tokens.map((t) => t.nombre).join('|'));
     if (category !== 'todas') params.set('cat', category);
     if (order !== 'price-asc') params.set('ord', order);
-    if (rowsLimit !== 25) params.set('sz', String(rowsLimit));
-    const onStores = STORE_ORDER.filter((s) => activeStores[s]);
-    if (onStores.length !== STORE_ORDER.length) params.set('ti', onStores.join(','));
-    const qs = params.toString();
-    return qs ? `${base}?${qs}` : base;
+    const url = `${window.location.origin}/productos?${params.toString()}`;
+    navigator.clipboard?.writeText(url);
+    setToast('Se copió el link de búsqueda');
+    setTimeout(() => setToast(null), 1800);
   }
 
-  async function shareCurrentView() {
-    const url = buildShareUrl();
-    // Web Share API (móviles compatibles)
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: 'BiPi — Búsqueda', text: 'Mira esta búsqueda en BiPi Chile', url });
-        return;
-      } catch {
-        // Si el usuario cancela, caemos a copiar
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      setToast('Se ha copiado link de búsqueda');
-      setTimeout(() => setToast(''), 2000);
-    } catch {
-      // Fallback extremo: nada
-    }
-  }
-
-  /* -----------------------------
-     Cargar filtros desde la URL (deep-link)
-     ----------------------------- */
+  // hidratar desde URL (si alguien abre el link compartido)
   useEffect(() => {
-    // Solo al primer render
-    const params = new URLSearchParams(window.location.search);
+    if (typeof window === 'undefined') return;
+    const sp = new URLSearchParams(window.location.search);
+    const qparam = sp.get('q');
+    const cat = sp.get('cat');
+    const ord = sp.get('ord');
 
-    // términos
-    const t = params.get('t');
-    if (t) {
-      const list = t.split('|').map((raw) => raw.trim()).filter(Boolean);
-      const uniq = Array.from(new Set(list));
-      setTerms(uniq.map((raw) => ({ raw, key: norm(raw) })));
-    } else {
-      const qParam = params.get('q');
-      if (qParam) setQ(qParam);
+    if (qparam) {
+      const parts = qparam.split('|').filter(Boolean);
+      setTokens(parts.map((p) => ({ nombre: p })));
     }
-
-    // categoría
-    const cat = params.get('cat');
-    if (cat) setCategory(cat);
-
-    // orden
-    const ord = params.get('ord');
-    if (ord && ORDER_OPTIONS.some((o) => o.id === ord)) setOrder(ord);
-
-    // filas
-    const sz = params.get('sz');
-    if (sz) {
-      const n = parseInt(sz, 10);
-      if ([10, 25, 50, 100].includes(n)) setRowsLimit(n);
-    }
-
-    // tiendas
-    const ti = params.get('ti');
-    if (ti) {
-      const list = ti.split(',').map((s) => s.trim());
-      const next = { lider: false, jumbo: false, unimarc: false, 'santa-isabel': false };
-      list.forEach((s) => {
-        if (s in next) next[s] = true;
-      });
-      setActiveStores(next);
-    }
-  }, []);
-
-  /* -----------------------------
-     Exportar
-     ----------------------------- */
-  const doCopyTable = async () => {
-    const headers = ['Producto', 'Formato', ...visibleStores.map((s) => STORE_META[s]?.label ?? s)];
-    const body = pagedEntries.map(([nombre, info]) => {
-      const row = [nombre, info.formato || '—'];
-      visibleStores.forEach((s) => row.push(info.precios[s] ?? ''));
-      return row;
-    });
-    const tsv = [headers.join('\t'), ...body.map((r) => r.join('\t'))].join('\n');
-    try {
-      await navigator.clipboard.writeText(tsv);
-      setToast('Tabla copiada');
-      setTimeout(() => setToast(''), 1800);
-    } catch {}
-  };
-
-  const doCSV = () => {
-    const headers = ['Producto', 'Formato', ...STORE_ORDER.map((s) => STORE_META[s]?.label ?? s)];
-    const body = filteredEntries.map(([nombre, info]) => {
-      const row = [nombre, info.formato || '—'];
-      STORE_ORDER.forEach((s) => row.push(info.precios[s] ?? ''));
-      return row;
-    });
-    download('bipi_productos.csv', toCSV(headers, body));
-  };
-
-  const doXLSX = () => {
-    const headers = ['Producto', 'Formato', ...STORE_ORDER.map((s) => STORE_META[s]?.label ?? s)];
-    const body = filteredEntries.map(([nombre, info]) => {
-      const row = [nombre, info.formato || '—'];
-      STORE_ORDER.forEach((s) => row.push(info.precios[s] ?? ''));
-      return row;
-    });
-    const csv = toCSV(headers, body);
-    download('bipi_productos.xlsx', csv);
-  };
-
-  /* -----------------------------
-     Cierre popovers / sugerencias
-     ----------------------------- */
-  useEffect(() => {
-    const onDocClick = (e) => {
-      if (exportRef.current && !exportRef.current.contains(e.target)) setExpOpen(false);
-      if (rowsRef.current && !rowsRef.current.contains(e.target)) setRowsOpen(false);
-      if (storesRef.current && !storesRef.current.contains(e.target)) setStoresOpen(false);
-      if (suggestRef.current && !suggestRef.current.contains(e.target) && e.target !== inputRef.current) {
-        setSuggestOpen(false);
-        setHighlight(-1);
-      }
-    };
-    document.addEventListener('click', onDocClick);
-    return () => document.removeEventListener('click', onDocClick);
-  }, []);
+    if (cat && categories.includes(cat)) setCategory(cat);
+    if (ord && ORDER_OPTIONS.find((o) => o.id === ord)) setOrder(ord);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories.join('|')]);
 
   /* -----------------------------
      Render
@@ -449,134 +331,102 @@ export default function Productos() {
       </h1>
 
       {/* ====== TOOLBAR ====== */}
-      <section className="toolbar">
-        {/* fila 1: buscador + categoría + ordenar */}
+      <section ref={toolbarRef} className="toolbar">
+        {/* Buscar + sugerencias */}
         <div className="toolbar-row">
-          <div className="toolbar-group" style={{ flex: 1, minWidth: 260, position: 'relative' }}>
+          <div className="toolbar-group" style={{ flex: 1, minWidth: 260 }}>
             <label className="toolbar-label" htmlFor="buscar">
               Buscar
             </label>
-            <input
-              id="buscar"
-              ref={inputRef}
-              className="toolbar-input"
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setSuggestOpen(Boolean(e.target.value.trim()));
-                setHighlight(-1);
-              }}
-              onFocus={() => setSuggestOpen(Boolean(q.trim()))}
-              onKeyDown={(e) => {
-                if (suggestOpen && suggestions.length) {
-                  if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    setHighlight((h) => (h + 1) % suggestions.length);
-                    return;
-                  }
-                  if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    setHighlight((h) => (h - 1 + suggestions.length) % suggestions.length);
-                    return;
-                  }
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (highlight >= 0) {
-                      addTermExact(suggestions[highlight]);
-                    } else {
-                      addTermFree();
-                    }
-                    return;
-                  }
-                  if (e.key === 'Escape') {
-                    setSuggestOpen(false);
-                    setHighlight(-1);
-                    return;
-                  }
-                } else if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addTermFree();
-                }
-              }}
-              placeholder="Ej: arroz, sal, aceite… (Enter para agregar)"
-              aria-autocomplete="list"
-              aria-expanded={suggestOpen}
-              aria-owns="suggest-list"
-              role="combobox"
-            />
 
-            {/* chips de términos */}
-            {terms.length > 0 && (
-              <div className="toolbar-chips" style={{ marginTop: 8 }}>
-                {terms.map((t) => (
-                  <span
-                    key={t.key}
-                    className="chip chip-active"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
-                  >
-                    {t.raw}
+            {/* Envoltorio con posición relativa para el overlay */}
+            <div ref={inputWrapRef} className="input-with-suggest" style={{ position: 'relative' }}>
+              <input
+                id="buscar"
+                ref={inputRef}
+                className="toolbar-input"
+                value={q}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setActiveIndex(-1);
+                  setOpenSuggest(true);
+                }}
+                onFocus={() => {
+                  if (q) setOpenSuggest(true);
+                }}
+                onBlur={() => {
+                  // iOS: al perder foco, “cerramos” zoom y recolocamos
+                  setTimeout(() => {
+                    const top = (toolbarRef.current?.offsetTop || 0) - 12;
+                    window.scrollTo({ top, behavior: 'smooth' });
+                  }, 40);
+                }}
+                onKeyDown={onInputKeyDown}
+                placeholder="Ej: arroz, aceite, papel, sal…"
+                inputMode="search"
+                enterKeyHint="done"
+                aria-autocomplete="list"
+                aria-expanded={openSuggest}
+                aria-controls="suggest-list"
+              />
+
+              {/* Panel de sugerencias (overlay absoluto) */}
+              {openSuggest && filteredSuggestions.length > 0 && (
+                <ul
+                  id="suggest-list"
+                  ref={suggestRef}
+                  className="suggest-panel"
+                  role="listbox"
+                  aria-label="Sugerencias"
+                >
+                  {filteredSuggestions.map((name, i) => (
+                    <li key={name}>
+                      <button
+                        type="button"
+                        className={`suggest-item ${i === activeIndex ? 'is-active' : ''}`}
+                        role="option"
+                        aria-selected={i === activeIndex}
+                        onMouseEnter={() => setActiveIndex(i)}
+                        onClick={() => addToken(name)}
+                      >
+                        {name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Chips seleccionados */}
+            {tokens.length > 0 && (
+              <div className="chips-selected" style={{ marginTop: 8 }}>
+                {tokens.map((t) => (
+                  <span key={t.nombre} className="token-chip" title={t.nombre}>
+                    {t.nombre}
                     <button
-                      type="button"
-                      aria-label={`Quitar ${t.raw}`}
-                      onClick={() => removeTerm(t.key)}
-                      style={{
-                        appearance: 'none',
-                        border: 'none',
-                        background: 'transparent',
-                        color: '#fff',
-                        fontWeight: 900,
-                        lineHeight: 1,
-                        cursor: 'pointer',
-                      }}
+                      aria-label={`Quitar ${t.nombre}`}
+                      onClick={() => removeToken(t.nombre)}
                     >
                       ×
                     </button>
                   </span>
                 ))}
-                <button type="button" className="chip chip-clear" onClick={clearSearch}>
-                  Limpiar búsqueda
-                </button>
               </div>
             )}
 
-            {/* AUTOCOMPLETE */}
-            {suggestOpen && suggestions.length > 0 && (
-              <div
-                ref={suggestRef}
-                id="suggest-list"
-                role="listbox"
-                className="export-menu show"
-                style={{
-                  position: 'absolute',
-                  insetInline: 0,
-                  top: '100%',
-                  marginTop: 6,
-                  maxHeight: 280,
-                  overflowY: 'auto',
-                  zIndex: 30,
-                }}
+            {tokens.length > 0 && (
+              <button
+                type="button"
+                className="chip chip-clear"
+                style={{ width: 'fit-content', marginTop: 8 }}
+                onClick={clearTokens}
               >
-                {suggestions.map((name, i) => (
-                  <button
-                    key={name}
-                    role="option"
-                    aria-selected={i === highlight}
-                    className="btn btn-secondary btn-sm"
-                    style={{
-                      justifyContent: 'flex-start',
-                      background: i === highlight ? '#eef2ff' : undefined,
-                    }}
-                    onMouseEnter={() => setHighlight(i)}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => addTermExact(name)}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
+                Limpiar búsqueda
+              </button>
             )}
           </div>
 
+          {/* Categoría */}
           <div className="toolbar-group">
             <label className="toolbar-label" htmlFor="categoria">
               Categoría
@@ -595,6 +445,7 @@ export default function Productos() {
             </select>
           </div>
 
+          {/* Orden */}
           <div className="toolbar-group">
             <label className="toolbar-label" htmlFor="ordenar">
               Ordenar
@@ -614,115 +465,132 @@ export default function Productos() {
           </div>
         </div>
 
-        {/* fila 2: tiendas + filas + exportar + compartir + limpiar */}
-        <div className="toolbar-row actions-row" style={{ justifyContent: 'flex-start', gap: 10 }}>
+        {/* Fila: Tiendas / Filas / Exportar / Compartir / Limpiar */}
+        <div className="toolbar-row" style={{ justifyContent: 'flex-start', gap: 10 }}>
           {/* Tiendas */}
-          <div className="toolbar__export" ref={storesRef}>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => setStoresOpen((v) => !v)}
-              aria-expanded={storesOpen}
-            >
-              Tiendas ({STORE_ORDER.filter((s) => activeStores[s]).length})
-              <span aria-hidden> ▾</span>
-            </button>
-            <div className={`export-menu ${storesOpen ? 'show' : ''}`} style={{ minWidth: 260 }}>
-              <div className="toolbar-chips" style={{ flexWrap: 'wrap' }}>
-                <button type="button" className="chip" onClick={selectAllStores}>
-                  Seleccionar todas
-                </button>
-                <button type="button" className="chip" onClick={unselectAllStores}>
-                  Quitar todas
-                </button>
-              </div>
-              <div className="toolbar-chips" style={{ flexWrap: 'wrap' }}>
-                {STORE_ORDER.map((slug) => {
-                  const on = activeStores[slug];
-                  const label = STORE_META[slug]?.label ?? slug;
-                  return (
-                    <button
-                      key={slug}
-                      type="button"
-                      className={`chip ${on ? 'chip-active' : ''}`}
-                      onClick={() => toggleStore(slug)}
-                      aria-pressed={on}
-                      title={on ? `Ocultar ${label}` : `Mostrar ${label}`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <PillButton
+            onClick={() => setOpenRows(false)}
+            title="Seleccionar tiendas (ya está oculto por simplicidad)"
+          >
+            Tiendas (4)
+          </PillButton>
 
-          {/* Filas */}
-          <div className="toolbar__export" ref={rowsRef}>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => setRowsOpen((v) => !v)}
-              aria-expanded={rowsOpen}
+          {/* Filas por página */}
+          <div className="popover-rows" style={{ position: 'relative' }}>
+            <PillButton
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenRows((v) => !v);
+                setOpenExport(false);
+              }}
+              ariaExpanded={openRows}
+              title="Cambiar filas por página"
             >
-              Filas: {rowsLimit} <span aria-hidden>▾</span>
-            </button>
-            <div className={`export-menu ${rowsOpen ? 'show' : ''}`}>
-              {[10, 25, 50, 100].map((n) => (
-                <button
-                  key={n}
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => {
-                    setRowsLimit(n);
-                    setRowsOpen(false);
-                  }}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
+              Filas: {rowsPerPage}
+            </PillButton>
+
+            {openRows && (
+              <div className="popover-menu" role="menu">
+                {[10, 25, 50, 100].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className="menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setRowsPerPage(n);
+                      setOpenRows(false);
+                    }}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Exportar */}
-          <div className="toolbar__export" ref={exportRef}>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => setExpOpen((v) => !v)}
-              aria-expanded={expOpen}
+          <div className="popover-export" style={{ position: 'relative' }}>
+            <PillButton
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenExport((v) => !v);
+                setOpenRows(false);
+              }}
+              ariaExpanded={openExport}
+              title="Exportar datos"
             >
-              Exportar <span aria-hidden>▾</span>
-            </button>
-            <div className={`export-menu ${expOpen ? 'show' : ''}`}>
-              <button className="btn btn-secondary btn-sm" onClick={doCopyTable}>Copiar</button>
-              <button className="btn btn-secondary btn-sm" onClick={doCSV}>CSV</button>
-              <button className="btn btn-secondary btn-sm" onClick={doXLSX}>Excel</button>
-            </div>
+              Exportar
+            </PillButton>
+
+            {openExport && (
+              <div className="popover-menu" role="menu">
+                <button
+                  type="button"
+                  className="menu-item"
+                  onClick={() => {
+                    copyTable(false);
+                    setOpenExport(false);
+                  }}
+                >
+                  Copiar
+                </button>
+                <button
+                  type="button"
+                  className="menu-item"
+                  onClick={() => {
+                    downloadCSV();
+                    setOpenExport(false);
+                  }}
+                >
+                  CSV
+                </button>
+                <button
+                  type="button"
+                  className="menu-item"
+                  onClick={() => {
+                    downloadExcel();
+                    setOpenExport(false);
+                  }}
+                >
+                  Excel
+                </button>
+              </div>
+            )}
           </div>
 
-          <button type="button" className="btn btn-secondary btn-sm" onClick={shareCurrentView}>
+          {/* Compartir búsqueda */}
+          <PillButton onClick={shareCurrentView} title="Copiar link con filtros actuales">
             Compartir búsqueda
-          </button>
+          </PillButton>
 
-          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+          <button
+            type="button"
+            className="chip chip-clear"
+            onClick={() => {
+              setQ('');
+              setTokens([]);
+              setCategory('todas');
+              setOrder('price-asc');
+            }}
+          >
             Limpiar filtros
           </button>
         </div>
 
-        {/* fila 3: contador */}
         <div className="toolbar-row" style={{ marginBottom: 0 }}>
           <span className="muted">
-            {filteredEntries.length} producto{filteredEntries.length === 1 ? '' : 's'} encontrados
-            {filteredEntries.length > rowsLimit ? ` — mostrando ${rowsLimit}` : ''}
+            {filteredSorted.length} producto{filteredSorted.length === 1 ? '' : 's'} encontrados
           </span>
         </div>
       </section>
 
-      {/* Errores */}
+      {toast && (
+        <div className="toast">{toast}</div>
+      )}
+
       {err && (
-        <p style={{ color: 'red', marginTop: 8 }}>
-          Error al cargar datos: {err}
-        </p>
+        <p style={{ color: 'red', marginTop: 8 }}>Error al cargar datos: {err}</p>
       )}
 
       {/* ====== TABLA ====== */}
@@ -739,20 +607,16 @@ export default function Productos() {
               ))}
             </tr>
           </thead>
-
           <tbody>
-            {pagedEntries.length === 0 && (
+            {filteredSorted.length === 0 && (
               <tr>
-                <td
-                  colSpan={2 + visibleStores.length}
-                  style={{ padding: 16, color: '#6B7280', textAlign: 'center' }}
-                >
-                  No se encontraron productos para la búsqueda/filtros actuales.
+                <td colSpan={2 + visibleStores.length} style={{ padding: 16, color: '#6B7280', textAlign: 'center' }}>
+                  No se encontraron productos para la búsqueda/filters actuales.
                 </td>
               </tr>
             )}
 
-            {pagedEntries.map(([nombre, info]) => {
+            {filteredSorted.slice(0, rowsPerPage).map(([nombre, info]) => {
               const min = cheapestVisible(info.precios, visibleStores);
               return (
                 <tr key={nombre}>
@@ -778,42 +642,71 @@ export default function Productos() {
                 </tr>
               );
             })}
-          </tbody>
 
-          {/* Totales */}
-          {filteredEntries.length > 0 && (
-            <tfoot>
+            {/* Totales si hay tokens */}
+            {totalsByStore && (
               <tr>
-                <th colSpan={2} style={{ textAlign: 'right' }}>Total</th>
-                {visibleStores.map((s) => {
-                  const total = totalsByStore[s] || 0;
-                  const isMin = minTotal != null && total === minTotal && total > 0;
-                  return (
-                    <th
-                      key={s}
-                      style={{
-                        textAlign: 'right',
-                        background: isMin ? '#dff5df' : '#F3F4F6',
-                        color: isMin ? '#006400' : '#111827',
-                        fontWeight: 800,
-                      }}
-                    >
-                      {total > 0 ? CLP(total) : '—'}
-                    </th>
-                  );
-                })}
+                <td colSpan={2} style={{ fontWeight: 800, background: '#F3F4F6' }}>
+                  Total por tienda (selección)
+                </td>
+                {visibleStores.map((s) => (
+                  <td key={s} style={{ textAlign: 'right', fontWeight: 800, background: '#F3F4F6' }}>
+                    {CLP(totalsByStore[s])}
+                  </td>
+                ))}
               </tr>
-            </tfoot>
-          )}
+            )}
+          </tbody>
         </table>
       </div>
 
       <p className="muted" style={{ marginTop: 14 }}>
         Nota: precios referenciales del MVP. Pueden variar por tienda y ciudad.
       </p>
-
-      {/* Toast */}
-      {toast && <div className="toast">{toast}</div>}
     </main>
   );
+
+  /* -----------------------------
+     Export helpers
+     ----------------------------- */
+  function tableDataForExport() {
+    const header = ['Producto', 'Formato', ...visibleStores.map((s) => STORE_META[s]?.label ?? s)];
+    const rows = filteredSorted.slice(0, rowsPerPage).map(([nombre, info]) => {
+      return [
+        nombre,
+        info.formato || '',
+        ...visibleStores.map((s) => (info.precios[s] ?? '')),
+      ];
+    });
+    return { header, rows };
+  }
+
+  function copyTable() {
+    const { header, rows } = tableDataForExport();
+    const lines = [header.join('\t'), ...rows.map((r) => r.join('\t'))].join('\n');
+    navigator.clipboard?.writeText(lines);
+    setToast('Tabla copiada');
+    setTimeout(() => setToast(null), 1500);
+  }
+
+  function downloadCSV() {
+    const { header, rows } = tableDataForExport();
+    const csv = [header.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'bipi_productos.csv';
+    a.click();
+  }
+
+  function downloadExcel() {
+    // CSV con extensión .xlsx (suficiente para abrir en Excel/Sheets)
+    const { header, rows } = tableDataForExport();
+    const csv = [header.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'application/vnd.ms-excel' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'bipi_productos.xlsx';
+    a.click();
+  }
 }

@@ -71,10 +71,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="es">
       <body>
-        {/* Skip link (Accesibilidad: permite saltar el navbar con teclado) */}
-        <a href="#main-content" className="skip-link">Saltar al contenido</a>
-
-        {/* HEADER: marca a la izquierda, navegación a la derecha (también en móvil) */}
+        {/* HEADER: marca a la izquierda, navegación a la derecha */}
         <header className="navbar">
           <div className="container nav-flex">
             <a href="/" className="brand" aria-label={`${APP} inicio`}>
@@ -94,7 +91,7 @@ export default function RootLayout({ children }) {
           {children}
         </main>
 
-        {/* FOOTER: dos líneas separadas, buen espaciado */}
+        {/* FOOTER */}
         <footer className="footer" role="contentinfo">
           <div>© {new Date().getFullYear()} {APP} — Comparador de precios</div>
           <div>Contacto: {CONTACT}</div>

@@ -94,7 +94,6 @@ strong {
   text-decoration: underline;
 }
 
-/* Mantiene posición en móviles */
 @media (max-width: 640px) {
   .nav-flex {
     gap: 12px;
@@ -332,6 +331,7 @@ strong {
   font-weight: 600;
   font-size: .9rem;
   cursor: pointer;
+  transition: all .2s ease;
 }
 
 .chip:hover {
@@ -349,22 +349,6 @@ strong {
   background: #F3F4F6;
   border-color: #E5E7EB;
   color: #374151;
-}
-
-/* === NUEVO: Alineación limpia para grupos de botones === */
-.toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-/* === NUEVO: Ajuste responsive para botones en pantallas pequeñas === */
-@media (max-width: 480px) {
-  .toolbar-actions .chip {
-    padding: 8px 10px;
-    font-size: 0.9rem;
-  }
 }
 
 /* =========================================================
@@ -427,3 +411,60 @@ td strong {
     align-items: center;
   }
 }
+
+/* =========================================================
+   ALERTAS, TOASTS Y SKELETONS (C.5 UX)
+   ========================================================= */
+
+/* Avisos de error */
+.alert {
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  color: #7f1d1d;
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin: 8px 0 12px 0;
+}
+
+/* Toast flotante temporal */
+.toast {
+  position: sticky;
+  top: 8px;
+  z-index: 60;
+  width: fit-content;
+  max-width: 90%;
+  margin: 0 auto 10px auto;
+  padding: 8px 12px;
+  border-radius: 9999px;
+  background: #111827;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(0,0,0,.25);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+/* Skeletons con efecto shimmer */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #E5E7EB;
+  border-radius: 8px;
+  height: 14px;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+  animation: shimmer 1.4s infinite;
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+.skeleton-text { height: 14px; }
+.skeleton-text.short { width: 120px; }
+.skeleton-text.tiny { width: 60px; height: 12px; }

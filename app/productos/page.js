@@ -210,7 +210,7 @@ export default function Productos() {
   const filteredEntries = useMemo(() => {
     let list = Object.entries(productos);
 
-    // Filtro: si hay chips, OR por cualquiera de los términos; si no, usa texto libre
+    // Filtro: chips (OR) o texto libre
     if (terms.length > 0) {
       list = list.filter(([nombre]) => {
         const n = norm(nombre);
@@ -298,16 +298,94 @@ export default function Productos() {
   }, [totalsByStore]);
 
   /* -----------------------------
-     Compartir / Exportar
+     Compartir búsqueda con filtros
      ----------------------------- */
-  const copyView = async () => {
+  function buildShareUrl() {
+    const base = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin) + '/productos';
+    const params = new URLSearchParams();
+    // términos seleccionados (raw) separados por |
+    if (terms.length) {
+      params.set('t', terms.map((x) => x.raw).join('|'));
+    }
+    // texto libre si no hay términos
+    if (!terms.length && q.trim()) params.set('q', q.trim());
+    if (category !== 'todas') params.set('cat', category);
+    if (order !== 'price-asc') params.set('ord', order);
+    if (rowsLimit !== 25) params.set('sz', String(rowsLimit));
+    const onStores = STORE_ORDER.filter((s) => activeStores[s]);
+    if (onStores.length !== STORE_ORDER.length) params.set('ti', onStores.join(','));
+    const qs = params.toString();
+    return qs ? `${base}?${qs}` : base;
+  }
+
+  async function shareCurrentView() {
+    const url = buildShareUrl();
+    // Web Share API (móviles compatibles)
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'BiPi — Búsqueda', text: 'Mira esta búsqueda en BiPi Chile', url });
+        return;
+      } catch {
+        // Si el usuario cancela, caemos a copiar
+      }
+    }
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(url);
       setToast('Se ha copiado link de búsqueda');
       setTimeout(() => setToast(''), 2000);
-    } catch {}
-  };
+    } catch {
+      // Fallback extremo: nada
+    }
+  }
 
+  /* -----------------------------
+     Cargar filtros desde la URL (deep-link)
+     ----------------------------- */
+  useEffect(() => {
+    // Solo al primer render
+    const params = new URLSearchParams(window.location.search);
+
+    // términos
+    const t = params.get('t');
+    if (t) {
+      const list = t.split('|').map((raw) => raw.trim()).filter(Boolean);
+      const uniq = Array.from(new Set(list));
+      setTerms(uniq.map((raw) => ({ raw, key: norm(raw) })));
+    } else {
+      const qParam = params.get('q');
+      if (qParam) setQ(qParam);
+    }
+
+    // categoría
+    const cat = params.get('cat');
+    if (cat) setCategory(cat);
+
+    // orden
+    const ord = params.get('ord');
+    if (ord && ORDER_OPTIONS.some((o) => o.id === ord)) setOrder(ord);
+
+    // filas
+    const sz = params.get('sz');
+    if (sz) {
+      const n = parseInt(sz, 10);
+      if ([10, 25, 50, 100].includes(n)) setRowsLimit(n);
+    }
+
+    // tiendas
+    const ti = params.get('ti');
+    if (ti) {
+      const list = ti.split(',').map((s) => s.trim());
+      const next = { lider: false, jumbo: false, unimarc: false, 'santa-isabel': false };
+      list.forEach((s) => {
+        if (s in next) next[s] = true;
+      });
+      setActiveStores(next);
+    }
+  }, []);
+
+  /* -----------------------------
+     Exportar
+     ----------------------------- */
   const doCopyTable = async () => {
     const headers = ['Producto', 'Formato', ...visibleStores.map((s) => STORE_META[s]?.label ?? s)];
     const body = pagedEntries.map(([nombre, info]) => {
@@ -489,10 +567,7 @@ export default function Productos() {
                       background: i === highlight ? '#eef2ff' : undefined,
                     }}
                     onMouseEnter={() => setHighlight(i)}
-                    onMouseDown={(e) => {
-                      // evita blur del input antes del click
-                      e.preventDefault();
-                    }}
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => addTermExact(name)}
                   >
                     {name}
@@ -625,7 +700,7 @@ export default function Productos() {
             </div>
           </div>
 
-          <button type="button" className="btn btn-secondary btn-sm" onClick={copyView}>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={shareCurrentView}>
             Compartir búsqueda
           </button>
 

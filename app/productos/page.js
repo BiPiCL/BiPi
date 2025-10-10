@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 /* ===========================
@@ -37,7 +37,6 @@ const ORDER_OPTIONS = [
 ];
 
 /* Helpers URL <-> Estado */
-const parseBool = (v) => v === '1' || v === 'true';
 const encodeStores = (obj) => STORE_ORDER.map((s) => (obj[s] ? '1' : '0')).join('');
 const decodeStores = (str) => {
   const flags = (str || '').padEnd(STORE_ORDER.length, '1').slice(0, STORE_ORDER.length);
@@ -52,6 +51,7 @@ export default function Productos() {
      ----------------------------- */
   const [rows, setRows] = useState([]);
   const [err, setErr] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   // Filtros/orden
   const [q, setQ] = useState('');
@@ -71,11 +71,10 @@ export default function Productos() {
   const [showExport, setShowExport] = useState(false);
   const [showPageSize, setShowPageSize] = useState(false);
 
-  // Paginación simple (cortamos número de filas visibles)
+  // Paginación simple (número de filas visibles)
   const [pageSize, setPageSize] = useState(25);
 
   // Debounce para el buscador
-  const searchRef = useRef(q);
   const debounceTimer = useRef(null);
 
   /* -----------------------------
@@ -83,15 +82,16 @@ export default function Productos() {
      ----------------------------- */
   useEffect(() => {
     (async () => {
+      setLoading(true);
+      setErr(null);
       const { data, error } = await supabase
         .from('product_price_matrix')
-        .select(
-          'product_id, producto, categoria, formato, tienda_slug, tienda, precio_clp'
-        )
+        .select('product_id, producto, categoria, formato, tienda_slug, tienda, precio_clp')
         .order('producto', { ascending: true });
 
       if (error) setErr(error.message);
-      else setRows(data ?? []);
+      setRows(data ?? []);
+      setLoading(false);
     })();
   }, []);
 
@@ -199,18 +199,15 @@ export default function Productos() {
   /* -----------------------------
      Sincronización con URL (C.4)
      ----------------------------- */
-
-  // 1) Leer URL al montar y precargar estado
+  // Leer una vez
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const sp = new URLSearchParams(window.location.search);
-
     const q0 = sp.get('q');
     const cat0 = sp.get('cat');
     const ord0 = sp.get('ord');
     const size0 = sp.get('size');
-    const stores0 = sp.get('stores'); // ej: "1101" (lider/jumbo/unimarc/santa-isabel)
-
+    const stores0 = sp.get('stores');
     if (q0 !== null) setQ(q0);
     if (cat0 !== null) setCategory(cat0);
     if (ord0 !== null) setOrder(ord0);
@@ -219,46 +216,36 @@ export default function Productos() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 2) Actualizar URL cuando cambie el estado (con debounce para q)
+  // Escribir con debounce
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
-    // usamos searchRef + debounce: actualiza cuando el usuario “termina” de escribir
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
-      searchRef.current = q;
-
       const sp = new URLSearchParams(window.location.search);
       q ? sp.set('q', q) : sp.delete('q');
       category && category !== 'todas' ? sp.set('cat', category) : sp.delete('cat');
       order && order !== 'price-asc' ? sp.set('ord', order) : sp.delete('ord');
       pageSize !== 25 ? sp.set('size', String(pageSize)) : sp.delete('size');
-
       const storesEncoded = encodeStores(activeStores);
       storesEncoded !== '1111' ? sp.set('stores', storesEncoded) : sp.delete('stores');
-
       const newUrl = `${window.location.pathname}?${sp.toString()}`;
       window.history.replaceState(null, '', newUrl);
     }, 250);
-
-    return () => {
-      if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    };
+    return () => debounceTimer.current && clearTimeout(debounceTimer.current);
   }, [q, category, order, pageSize, activeStores]);
 
-  // Botón “Compartir vista”
   const handleShare = async () => {
     if (typeof window === 'undefined') return;
     try {
       await navigator.clipboard.writeText(window.location.href);
-      alert('Enlace copiado. ¡Puedes compartir esta vista!');
+      setTempNotice('Enlace copiado. ¡Puedes compartir esta vista!');
     } catch {
-      alert('No se pudo copiar el enlace.');
+      setTempNotice('No se pudo copiar el enlace.');
     }
   };
 
   /* -----------------------------
-     Exportar (CSV/Excel minimal)
+     Exportar (CSV/Excel)
      ----------------------------- */
   function toCSV(rowsArr) {
     const headers = ['Producto', 'Formato', ...visibleStores.map((s) => STORE_META[s]?.label ?? s)];
@@ -287,22 +274,34 @@ export default function Productos() {
   const handleDownloadCSV = () => {
     const csv = toCSV(filteredSorted);
     downloadBlob(csv, 'bipi_productos.csv', 'text/csv;charset=utf-8;');
+    setTempNotice('CSV descargado.');
   };
 
   const handleCopyTable = async () => {
     const csv = toCSV(pageItems);
     try {
       await navigator.clipboard.writeText(csv);
-      alert('Tabla copiada (CSV).');
+      setTempNotice('Tabla copiada (CSV).');
     } catch {
-      alert('No se pudo copiar. Permite el acceso al portapapeles.');
+      setTempNotice('No se pudo copiar. Permite el acceso al portapapeles.');
     }
   };
 
   const handleDownloadExcel = () => {
     const csv = toCSV(filteredSorted);
     downloadBlob(csv, 'bipi_productos.csv', 'text/csv;charset=utf-8;');
+    setTempNotice('Excel descargado (formato CSV).');
   };
+
+  /* -----------------------------
+     Avisos temporales (toast simple)
+     ----------------------------- */
+  const [tempNotice, setTempNotice] = useState('');
+  useEffect(() => {
+    if (!tempNotice) return;
+    const t = setTimeout(() => setTempNotice(''), 2200);
+    return () => clearTimeout(t);
+  }, [tempNotice]);
 
   /* -----------------------------
      Render
@@ -312,6 +311,20 @@ export default function Productos() {
       <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>
         Comparador de precios — Productos
       </h1>
+
+      {/* Aviso de error */}
+      {err && (
+        <div className="alert alert-error" role="status" aria-live="polite">
+          <strong>Error:</strong> {err}
+        </div>
+      )}
+
+      {/* Toast temporal */}
+      {tempNotice && (
+        <div className="toast" role="status" aria-live="polite">
+          {tempNotice}
+        </div>
+      )}
 
       <section className="toolbar">
         {/* === FILA 1 === */}
@@ -465,41 +478,63 @@ export default function Productos() {
               ))}
             </tr>
           </thead>
+
           <tbody>
-            {pageItems.length === 0 && (
+            {/* Skeletons mientras carga */}
+            {loading &&
+              Array.from({ length: 8 }).map((_, i) => (
+                <tr key={`sk-${i}`}>
+                  <td><div className="skeleton skeleton-text" /></td>
+                  <td><div className="skeleton skeleton-text short" /></td>
+                  {visibleStores.map((s) => (
+                    <td key={s} style={{ textAlign: 'right' }}>
+                      <div className="skeleton skeleton-text tiny" style={{ marginLeft: 'auto' }} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+
+            {/* Sin resultados (cuando ya cargó y filtros vacían la tabla) */}
+            {!loading && pageItems.length === 0 && (
               <tr>
-                <td colSpan={2 + visibleStores.length} style={{ textAlign: 'center', padding: 16 }}>
-                  No se encontraron productos.
+                <td colSpan={2 + visibleStores.length} style={{ textAlign: 'center', padding: 20 }}>
+                  <div style={{ marginBottom: 8, fontWeight: 700 }}>Sin resultados</div>
+                  <div className="muted" style={{ marginBottom: 10 }}>
+                    Ajusta búsqueda, categoría o tiendas. También puedes “Limpiar filtros”.
+                  </div>
+                  <button className="chip chip-clear" onClick={clearFilters}>Limpiar filtros</button>
                 </td>
               </tr>
             )}
 
-            {pageItems.map(([nombre, info]) => {
-              const min = cheapestVisible(info.precios, visibleStores);
-              return (
-                <tr key={nombre}>
-                  <td>{nombre}</td>
-                  <td>{info.formato || '—'}</td>
-                  {visibleStores.map((s) => {
-                    const val = info.precios[s];
-                    const isMin = min != null && val === min;
-                    return (
-                      <td
-                        key={s}
-                        style={{
-                          textAlign: 'right',
-                          fontWeight: isMin ? 700 : 500,
-                          background: isMin ? '#e6f7e6' : 'transparent',
-                          color: isMin ? '#006400' : '#111827',
-                        }}
-                      >
-                        {val != null ? CLP(val) : '—'}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
+            {/* Filas reales */}
+            {!loading &&
+              pageItems.map(([nombre, info]) => {
+                const min = cheapestVisible(info.precios, visibleStores);
+                return (
+                  <tr key={nombre}>
+                    <td>{nombre}</td>
+                    <td>{info.formato || '—'}</td>
+                    {visibleStores.map((s) => {
+                      const val = info.precios[s];
+                      const isMin = min != null && val === min;
+                      return (
+                        <td
+                          key={s}
+                          style={{
+                            textAlign: 'right',
+                            fontWeight: isMin ? 700 : 500,
+                            background: isMin ? '#e6f7e6' : 'transparent',
+                            color: isMin ? '#006400' : '#111827',
+                          }}
+                        >
+                          {val != null ? CLP(val) : '—'}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
           </tbody>
         </table>
       </div>

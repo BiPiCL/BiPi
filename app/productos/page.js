@@ -42,19 +42,41 @@ const ORDER_OPTIONS = [
   { id: 'name-desc', label: 'Nombre Z → A' },
 ];
 
+/* Helpers Export */
+function download(filename, text) {
+  const el = document.createElement('a');
+  el.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+  el.setAttribute('download', filename);
+  el.style.display = 'none';
+  document.body.appendChild(el);
+  el.click();
+  document.body.removeChild(el);
+}
+
+function toCSV(headers, rows) {
+  const esc = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
+  const head = headers.map(esc).join(',');
+  const body = rows.map((r) => r.map(esc).join(',')).join('\n');
+  return head + '\n' + body;
+}
+
 export default function Productos() {
   /* -----------------------------
-     Estado de datos y filtros
+     Estado de datos
      ----------------------------- */
   const [rows, setRows] = useState([]);
   const [err, setErr] = useState(null);
 
+  /* -----------------------------
+     Filtros y UI
+     ----------------------------- */
+  // términos seleccionados (chips) y texto actual del input
+  const [terms, setTerms] = useState([]); // array de strings (minúscula normalizada)
   const [q, setQ] = useState('');
+
   const [category, setCategory] = useState('todas');
   const [order, setOrder] = useState('price-asc');
-
-  // filas por página (drop oculto en popover “Filas”)
-  const [pageSize, setPageSize] = useState(25);
+  const [rowsLimit, setRowsLimit] = useState(25);
 
   // chips de tiendas activas
   const [activeStores, setActiveStores] = useState({
@@ -64,12 +86,17 @@ export default function Productos() {
     'santa-isabel': true,
   });
 
-  // popover Exportar
-  const [openExport, setOpenExport] = useState(false);
-  const exportRef = useRef(null);
+  // popovers (Exportar / Filas / Tiendas)
+  const [expOpen, setExpOpen] = useState(false);
+  const [rowsOpen, setRowsOpen] = useState(false);
+  const [storesOpen, setStoresOpen] = useState(false);
 
-  // toast “copiado”
-  const [copiedMsg, setCopiedMsg] = useState('');
+  // toast de “copiado”
+  const [toast, setToast] = useState('');
+
+  const exportRef = useRef(null);
+  const rowsRef = useRef(null);
+  const storesRef = useRef(null);
 
   /* -----------------------------
      Carga de datos desde Supabase
@@ -87,29 +114,6 @@ export default function Productos() {
       else setRows(data ?? []);
     })();
   }, []);
-
-  /* -----------------------------
-     Cerrar popover Export al hacer clic fuera o Esc
-     ----------------------------- */
-  useEffect(() => {
-    function onDown(e) {
-      if (e.key === 'Escape') setOpenExport(false);
-    }
-    function onClickOutside(e) {
-      if (!exportRef.current) return;
-      if (!exportRef.current.contains(e.target)) setOpenExport(false);
-    }
-    if (openExport) {
-      document.addEventListener('keydown', onDown);
-      document.addEventListener('mousedown', onClickOutside);
-      document.addEventListener('touchstart', onClickOutside);
-    }
-    return () => {
-      document.removeEventListener('keydown', onDown);
-      document.removeEventListener('mousedown', onClickOutside);
-      document.removeEventListener('touchstart', onClickOutside);
-    };
-  }, [openExport]);
 
   /* -----------------------------
      Derivados: categorías únicas
@@ -146,18 +150,40 @@ export default function Productos() {
      ----------------------------- */
   const visibleStores = useMemo(() => {
     const list = STORE_ORDER.filter((slug) => activeStores[slug]);
-    return list.length ? list : STORE_ORDER; // si el usuario apaga todo, mostramos todas
+    return list.length ? list : STORE_ORDER; // si apagan todas, mostramos todas
   }, [activeStores]);
+
+  /* -----------------------------
+     Búsqueda múltiple (terms)
+     ----------------------------- */
+  const addTerm = () => {
+    const t = norm(q);
+    if (t && !terms.includes(t)) {
+      setTerms((prev) => [...prev, t]);
+    }
+    setQ('');
+  };
+  const removeTerm = (t) => setTerms((prev) => prev.filter((x) => x !== t));
+  const clearSearch = () => {
+    setQ('');
+    setTerms([]);
+  };
 
   /* -----------------------------
      Filtrar + ordenar
      ----------------------------- */
-  const qn = norm(q);
-  const filteredSorted = useMemo(() => {
-    let list = Object.entries(productos);
+  const filteredEntries = useMemo(() => {
+    let list = Object.entries(productos); // [ [nombre, info], ... ]
 
-    // Filtro buscador (nombre o categoría)
-    if (qn) {
+    // Filtro por términos (OR por término)
+    if (terms.length > 0) {
+      list = list.filter(([nombre]) => {
+        const n = norm(nombre);
+        return terms.some((t) => n.includes(t));
+      });
+    } else if (q) {
+      // si no se han agregado términos, filtra por el texto libre
+      const qn = norm(q);
       list = list.filter(([nombre, info]) => {
         const n = norm(nombre);
         const c = norm(info.categoria || '');
@@ -176,7 +202,7 @@ export default function Productos() {
         order === 'name-asc' ? a.localeCompare(b) : b.localeCompare(a)
       );
     } else {
-      // Orden por precio más bajo (considerando solo tiendas visibles)
+      // Orden por precio mínimo considerando tiendas visibles
       list.sort(([, A], [, B]) => {
         const minA = cheapestVisible(A.precios, visibleStores);
         const minB = cheapestVisible(B.precios, visibleStores);
@@ -187,7 +213,13 @@ export default function Productos() {
     }
 
     return list;
-  }, [productos, qn, category, order, visibleStores]);
+  }, [productos, q, terms, category, order, visibleStores]);
+
+  // lista paginada para mostrar (pero totales se calculan sobre TODO el filtrado)
+  const pagedEntries = useMemo(
+    () => filteredEntries.slice(0, rowsLimit),
+    [filteredEntries, rowsLimit]
+  );
 
   /* Precio mínimo entre tiendas visibles */
   function cheapestVisible(precios, stores) {
@@ -199,55 +231,116 @@ export default function Productos() {
   const toggleStore = (slug) =>
     setActiveStores((prev) => ({ ...prev, [slug]: !prev[slug] }));
 
-  /* Limpiar filtros */
-  const clearFilters = () => {
-    setQ('');
-    setCategory('todas');
-    setOrder('price-asc');
-    setPageSize(25);
+  const selectAllStores = () =>
     setActiveStores({
       lider: true,
       jumbo: true,
       unimarc: true,
       'santa-isabel': true,
     });
+
+  const unselectAllStores = () =>
+    setActiveStores({
+      lider: false,
+      jumbo: false,
+      unimarc: false,
+      'santa-isabel': false,
+    });
+
+  const clearFilters = () => {
+    setQ('');
+    setTerms([]);
+    setCategory('todas');
+    setOrder('price-asc');
+    setRowsLimit(25);
+    selectAllStores();
   };
 
   /* -----------------------------
-     Compartir búsqueda (copiar URL con filtros)
+     Totales por supermercado
      ----------------------------- */
-  function buildShareUrl() {
-    const url = new URL(
-      `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/productos`
-    );
-    if (q) url.searchParams.set('q', q);
-    if (category !== 'todas') url.searchParams.set('cat', category);
-    if (order !== 'price-asc') url.searchParams.set('ord', order);
-    if (pageSize !== 25) url.searchParams.set('sz', String(pageSize));
-    // tiendas (solo las que están activas en orden fijo)
-    const onStores = STORE_ORDER.filter((s) => activeStores[s]);
-    if (onStores.length !== STORE_ORDER.length) {
-      url.searchParams.set('ti', onStores.join(','));
-    }
-    return url.toString();
-  }
+  const totalsByStore = useMemo(() => {
+    const totals = Object.fromEntries(STORE_ORDER.map((s) => [s, 0]));
+    filteredEntries.forEach(([, info]) => {
+      STORE_ORDER.forEach((s) => {
+        const val = info.precios[s];
+        if (typeof val === 'number') totals[s] += val;
+      });
+    });
+    return totals; // {lider: 1234, ...}
+  }, [filteredEntries]);
 
-  async function copyShareUrl() {
-    const link = buildShareUrl();
+  const minTotal = useMemo(() => {
+    const vals = STORE_ORDER.map((s) => totalsByStore[s]).filter((v) => v > 0);
+    return vals.length ? Math.min(...vals) : null;
+  }, [totalsByStore]);
+
+  /* -----------------------------
+     Exportar / Compartir
+     ----------------------------- */
+  const copyView = async () => {
     try {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(window.location.href);
+      setToast('Se ha copiado link de búsqueda');
+      setTimeout(() => setToast(''), 2000);
     } catch {
-      // Fallback
-      const ta = document.createElement('textarea');
-      ta.value = link;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
+      // fallback: nada
     }
-    setCopiedMsg('Se ha copiado link de búsqueda');
-    setTimeout(() => setCopiedMsg(''), 2000);
-  }
+  };
+
+  const doCopyTable = async () => {
+    // Exporta la página actual en formato TSV al portapapeles
+    const headers = ['Producto', 'Formato', ...visibleStores.map((s) => STORE_META[s]?.label ?? s)];
+    const body = pagedEntries.map(([nombre, info]) => {
+      const row = [nombre, info.formato || '—'];
+      visibleStores.forEach((s) => {
+        const val = info.precios[s];
+        row.push(val != null ? String(val) : '—');
+      });
+      return row;
+    });
+    const tsv = [headers.join('\t'), ...body.map((r) => r.join('\t'))].join('\n');
+    try {
+      await navigator.clipboard.writeText(tsv);
+      setToast('Tabla copiada');
+      setTimeout(() => setToast(''), 1800);
+    } catch {}
+  };
+
+  const doCSV = () => {
+    const headers = ['Producto', 'Formato', ...STORE_ORDER.map((s) => STORE_META[s]?.label ?? s)];
+    const body = filteredEntries.map(([nombre, info]) => {
+      const row = [nombre, info.formato || '—'];
+      STORE_ORDER.forEach((s) => row.push(info.precios[s] ?? ''));
+      return row;
+    });
+    download('bipi_productos.csv', toCSV(headers, body));
+  };
+
+  const doXLSX = () => {
+    // Simple CSV con extensión .xlsx (Excel lo abrirá)
+    const headers = ['Producto', 'Formato', ...STORE_ORDER.map((s) => STORE_META[s]?.label ?? s)];
+    const body = filteredEntries.map(([nombre, info]) => {
+      const row = [nombre, info.formato || '—'];
+      STORE_ORDER.forEach((s) => row.push(info.precios[s] ?? ''));
+      return row;
+    });
+    const csv = toCSV(headers, body);
+    download('bipi_productos.xlsx', csv);
+  };
+
+  /* -----------------------------
+     Cierre de popovers clic afuera
+     ----------------------------- */
+  useEffect(() => {
+    const onDocClick = (e) => {
+      if (exportRef.current && !exportRef.current.contains(e.target)) setExpOpen(false);
+      if (rowsRef.current && !rowsRef.current.contains(e.target)) setRowsOpen(false);
+      if (storesRef.current && !storesRef.current.contains(e.target)) setStoresOpen(false);
+    };
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, []);
 
   /* -----------------------------
      Render
@@ -260,9 +353,9 @@ export default function Productos() {
 
       {/* ====== TOOLBAR ====== */}
       <section className="toolbar">
-        {/* fila 1: Buscador */}
+        {/* fila 1: buscador + categoría + ordenar */}
         <div className="toolbar-row">
-          <div className="toolbar-group" style={{ flex: 1, minWidth: 240 }}>
+          <div className="toolbar-group" style={{ flex: 1, minWidth: 260 }}>
             <label className="toolbar-label" htmlFor="buscar">
               Buscar
             </label>
@@ -271,8 +364,43 @@ export default function Productos() {
               className="toolbar-input"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Ej: arroz, aceite, papel, sal…"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addTerm();
+                }
+              }}
+              placeholder="Ej: arroz, sal, aceite… (Enter para agregar)"
             />
+            {/* chips de términos */}
+            {terms.length > 0 && (
+              <div className="toolbar-chips" style={{ marginTop: 8 }}>
+                {terms.map((t) => (
+                  <span key={t} className="chip chip-active" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    {t}
+                    <button
+                      type="button"
+                      aria-label={`Quitar ${t}`}
+                      onClick={() => removeTerm(t)}
+                      style={{
+                        appearance: 'none',
+                        border: 'none',
+                        background: 'transparent',
+                        color: '#fff',
+                        fontWeight: 900,
+                        lineHeight: 1,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                <button type="button" className="chip chip-clear" onClick={clearSearch}>
+                  Limpiar búsqueda
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="toolbar-group">
@@ -312,44 +440,73 @@ export default function Productos() {
           </div>
         </div>
 
-        {/* fila 2: Acciones (Filas / Exportar / Compartir / Limpiar) */}
-        <div className="toolbar-row actions-row" style={{ gap: 10 }}>
-          {/* Tiendas (globo resumido) */}
-          <div className="toolbar__export">
+        {/* fila 2: tiendas (popover) + filas (popover) + exportar (popover) + compartir + limpiar */}
+        <div className="toolbar-row actions-row" style={{ justifyContent: 'flex-start', gap: 10 }}>
+          {/* Tiendas */}
+          <div className="toolbar__export" ref={storesRef}>
             <button
               type="button"
               className="btn btn-secondary btn-sm"
-              aria-haspopup="true"
-              aria-expanded="false"
-              onClick={() =>
-                alert(
-                  'Para filtrar tiendas usa los chips (esta versión resume las tiendas activas).'
-                )
-              }
-              title="Tiendas activas"
+              onClick={() => setStoresOpen((v) => !v)}
+              aria-expanded={storesOpen}
             >
               Tiendas ({STORE_ORDER.filter((s) => activeStores[s]).length})
+              <span aria-hidden> ▾</span>
             </button>
+            <div className={`export-menu ${storesOpen ? 'show' : ''}`} style={{ minWidth: 260 }}>
+              <div className="toolbar-chips" style={{ flexWrap: 'wrap' }}>
+                <button type="button" className="chip" onClick={selectAllStores}>
+                  Seleccionar todas
+                </button>
+                <button type="button" className="chip" onClick={unselectAllStores}>
+                  Quitar todas
+                </button>
+              </div>
+              <div className="toolbar-chips" style={{ flexWrap: 'wrap' }}>
+                {STORE_ORDER.map((slug) => {
+                  const on = activeStores[slug];
+                  const label = STORE_META[slug]?.label ?? slug;
+                  return (
+                    <button
+                      key={slug}
+                      type="button"
+                      className={`chip ${on ? 'chip-active' : ''}`}
+                      onClick={() => toggleStore(slug)}
+                      aria-pressed={on}
+                      title={on ? `Ocultar ${label}` : `Mostrar ${label}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* Filas */}
-          <div className="toolbar__export">
+          <div className="toolbar__export" ref={rowsRef}>
             <button
               type="button"
               className="btn btn-secondary btn-sm"
-              aria-haspopup="true"
-              aria-expanded="false"
-              onClick={() =>
-                setPageSize((p) => {
-                  const opts = [10, 25, 50, 100];
-                  const idx = opts.indexOf(p);
-                  return opts[(idx + 1) % opts.length];
-                })
-              }
-              title="Cambiar filas por página"
+              onClick={() => setRowsOpen((v) => !v)}
+              aria-expanded={rowsOpen}
             >
-              Filas: {pageSize}
+              Filas: {rowsLimit} <span aria-hidden>▾</span>
             </button>
+            <div className={`export-menu ${rowsOpen ? 'show' : ''}`}>
+              {[10, 25, 50, 100].map((n) => (
+                <button
+                  key={n}
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    setRowsLimit(n);
+                    setRowsOpen(false);
+                  }}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Exportar */}
@@ -357,122 +514,23 @@ export default function Productos() {
             <button
               type="button"
               className="btn btn-secondary btn-sm"
-              aria-haspopup="true"
-              aria-expanded={openExport}
-              aria-controls="export-menu"
-              onClick={() => setOpenExport((v) => !v)}
-              title="Exportar"
+              onClick={() => setExpOpen((v) => !v)}
+              aria-expanded={expOpen}
             >
-              Exportar ▾
+              Exportar <span aria-hidden>▾</span>
             </button>
-
-            <div
-              id="export-menu"
-              className={`export-menu ${openExport ? 'show' : ''}`}
-              role="menu"
-              aria-label="Opciones de exportación"
-            >
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={() => {
-                  // copiar tabla (simple)
-                  const lines = filteredSorted.map(([n, info]) => {
-                    const cols = visibleStores.map((s) =>
-                      info.precios[s] != null ? CLP(info.precios[s]) : '—'
-                    );
-                    return [n, info.formato || '—', ...cols].join('\t');
-                  });
-                  const header = ['Producto', 'Formato', ...visibleStores
-                    .map((s) => STORE_META[s]?.label ?? s)].join('\t');
-                  const text = [header, ...lines].join('\n');
-                  navigator.clipboard.writeText(text);
-                  setOpenExport(false);
-                  setCopiedMsg('Se copió la tabla');
-                  setTimeout(() => setCopiedMsg(''), 2000);
-                }}
-                role="menuitem"
-              >
-                Copiar
-              </button>
-
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={() => {
-                  // CSV sencillo
-                  const header = ['Producto','Formato',...visibleStores.map((s)=>STORE_META[s]?.label??s)];
-                  const rowsCsv = filteredSorted.map(([n, info]) => {
-                    const cols = visibleStores.map((s) =>
-                      info.precios[s] != null ? info.precios[s] : ''
-                    );
-                    return [n, info.formato || '', ...cols]
-                      .map((x) => `"${String(x).replace(/"/g, '""')}"`)
-                      .join(',');
-                  });
-                  const csv = [header.join(','), ...rowsCsv].join('\n');
-                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'bipi_productos.csv';
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(url);
-                  setOpenExport(false);
-                }}
-                role="menuitem"
-              >
-                CSV
-              </button>
-
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={() => {
-                  // “Excel” = CSV con extensión .xls para abrir directo
-                  const header = ['Producto','Formato',...visibleStores.map((s)=>STORE_META[s]?.label??s)];
-                  const rowsX = filteredSorted.map(([n, info]) => {
-                    const cols = visibleStores.map((s) =>
-                      info.precios[s] != null ? info.precios[s] : ''
-                    );
-                    return [n, info.formato || '', ...cols]
-                      .map((x) => `"${String(x).replace(/"/g, '""')}"`)
-                      .join(',');
-                  });
-                  const csv = [header.join(','), ...rowsX].join('\n');
-                  const blob = new Blob([csv], { type: 'application/vnd.ms-excel' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'bipi_productos.xls';
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(url);
-                  setOpenExport(false);
-                }}
-                role="menuitem"
-              >
-                Excel
-              </button>
+            <div className={`export-menu ${expOpen ? 'show' : ''}`}>
+              <button className="btn btn-secondary btn-sm" onClick={doCopyTable}>Copiar</button>
+              <button className="btn btn-secondary btn-sm" onClick={doCSV}>CSV</button>
+              <button className="btn btn-secondary btn-sm" onClick={doXLSX}>Excel</button>
             </div>
           </div>
 
-          {/* Compartir búsqueda */}
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={copyShareUrl}
-            title="Copiar link con los filtros actuales"
-          >
+          <button type="button" className="btn btn-secondary btn-sm" onClick={copyView}>
             Compartir búsqueda
           </button>
 
-          {/* Limpiar */}
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={clearFilters}
-          >
+          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
             Limpiar filtros
           </button>
         </div>
@@ -480,8 +538,8 @@ export default function Productos() {
         {/* fila 3: contador */}
         <div className="toolbar-row" style={{ marginBottom: 0 }}>
           <span className="muted">
-            {filteredSorted.length} producto
-            {filteredSorted.length === 1 ? '' : 's'} encontrados
+            {filteredEntries.length} producto{filteredEntries.length === 1 ? '' : 's'} encontrados
+            {filteredEntries.length > rowsLimit ? ` — mostrando ${rowsLimit}` : ''}
           </span>
         </div>
       </section>
@@ -501,10 +559,7 @@ export default function Productos() {
               <th>Producto</th>
               <th>Formato</th>
               {visibleStores.map((s) => (
-                <th
-                  key={s}
-                  style={{ textAlign: 'right', textTransform: 'capitalize' }}
-                >
+                <th key={s} style={{ textAlign: 'right', textTransform: 'capitalize' }}>
                   {STORE_META[s]?.label ?? s}
                 </th>
               ))}
@@ -512,18 +567,18 @@ export default function Productos() {
           </thead>
 
           <tbody>
-            {filteredSorted.length === 0 && (
+            {pagedEntries.length === 0 && (
               <tr>
                 <td
                   colSpan={2 + visibleStores.length}
                   style={{ padding: 16, color: '#6B7280', textAlign: 'center' }}
                 >
-                  No se encontraron productos para la búsqueda/filters actuales.
+                  No se encontraron productos para la búsqueda/filtros actuales.
                 </td>
               </tr>
             )}
 
-            {filteredSorted.map(([nombre, info]) => {
+            {pagedEntries.map(([nombre, info]) => {
               const min = cheapestVisible(info.precios, visibleStores);
               return (
                 <tr key={nombre}>
@@ -550,23 +605,41 @@ export default function Productos() {
               );
             })}
           </tbody>
+
+          {/* Totales por supermercado (sobre TODOS los filtrados, no solo la página) */}
+          {filteredEntries.length > 0 && (
+            <tfoot>
+              <tr>
+                <th colSpan={2} style={{ textAlign: 'right' }}>Total</th>
+                {visibleStores.map((s) => {
+                  const total = totalsByStore[s] || 0;
+                  const isMin = minTotal != null && total === minTotal && total > 0;
+                  return (
+                    <th
+                      key={s}
+                      style={{
+                        textAlign: 'right',
+                        background: isMin ? '#dff5df' : '#F3F4F6',
+                        color: isMin ? '#006400' : '#111827',
+                        fontWeight: 800
+                      }}
+                    >
+                      {total > 0 ? CLP(total) : '—'}
+                    </th>
+                  );
+                })}
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
-
-      {/* Toast “copiado” */}
-      {copiedMsg ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="toast"
-        >
-          {copiedMsg}
-        </div>
-      ) : null}
 
       <p className="muted" style={{ marginTop: 14 }}>
         Nota: precios referenciales del MVP. Pueden variar por tienda y ciudad.
       </p>
+
+      {/* Toast */}
+      {toast && <div className="toast">{toast}</div>}
     </main>
   );
 }

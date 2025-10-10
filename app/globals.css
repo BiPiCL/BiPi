@@ -1,5 +1,5 @@
 /* =========================================================
-   BiPi Chile — Estilos Globales (versión final 2025)
+   BiPi Chile — Estilos Globales (versión 2025 final + color azul uniforme)
    ========================================================= */
 
 /* === Reset global === */
@@ -25,13 +25,8 @@ html, body {
   padding: 0 16px;
 }
 
-.muted {
-  color: #6B7280;
-}
-
-strong {
-  color: #111827;
-}
+.muted { color: #6B7280; }
+strong { color: #111827; }
 
 /* =========================================================
    NAVBAR
@@ -239,10 +234,11 @@ strong {
 
 .toolbar-label {
   font-size: .9rem;
-  color: #374151;
-  font-weight: 600;
+  color: #1E40AF; /* Azul más oscuro, uniforme */
+  font-weight: 700;
 }
 
+/* Inputs y Selects */
 .toolbar-input,
 .toolbar-select {
   height: 38px;
@@ -252,12 +248,23 @@ strong {
   outline: none;
   min-width: 230px;
   background: #fff;
+  color: #1E40AF; /* Azul oscuro */
+  appearance: none;
+}
+
+.toolbar-input::placeholder {
+  color: #64748b;
 }
 
 .toolbar-input:focus,
 .toolbar-select:focus {
   border-color: #2563EB;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
+}
+
+/* iPhone y Safari fix */
+select, option {
+  color: #1E40AF !important;
 }
 
 /* Chips */
@@ -272,6 +279,7 @@ strong {
   border-radius: 9999px;
   border: 1px solid #d1d5db;
   background: #fff;
+  color: #1E40AF;
   font-weight: 600;
   font-size: .9rem;
   cursor: pointer;
@@ -313,15 +321,11 @@ strong {
   gap: 8px;
 }
 
-.btn-sm {
-  padding: 8px 12px;
-  font-size: .9rem;
-}
+.btn-sm { padding: 8px 12px; font-size: .9rem; }
 
-/* Secundario — igual que los chips */
 .btn-secondary {
   background: #fff;
-  color: #111827;
+  color: #1E40AF;
   border: 1px solid #d1d5db;
 }
 .btn-secondary:hover {
@@ -331,10 +335,9 @@ strong {
   transform: translateY(-1px);
 }
 
-/* Ghost — gris suave para popovers */
 .btn-ghost {
   background: #F3F4F6;
-  color: #111827;
+  color: #1E40AF;
   border: 1px solid #E5E7EB;
 }
 .btn-ghost:hover {

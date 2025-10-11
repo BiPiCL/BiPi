@@ -233,11 +233,9 @@ export default function Productos() {
       <section className="toolbar">
         {/* Fila superior: Buscar / Categoría / Ordenar */}
         <div className="toolbar-row">
-          {/* ancla del dropdown */}
           <div className="toolbar-group search-group" style={{ flex: 1, minWidth: 260 }}>
             <label className="toolbar-label" htmlFor="buscar">Buscar</label>
 
-            {/* 🔹 ANCLA NUEVA: el dropdown queda pegado al input, no al grupo */}
             <div className="sugg-anchor">
               <input
                 id="buscar"
@@ -265,7 +263,7 @@ export default function Productos() {
               )}
             </div>
 
-            {/* 🔹 CHIPS SIEMPRE BAJO BUSCAR */}
+            {/* chips debajo del buscador */}
             {tokens.length > 0 && (
               <div className="chips-inline">
                 <div className="toolbar-chips" role="list">
@@ -324,7 +322,6 @@ export default function Productos() {
 
         {/* Acciones */}
         <div className="toolbar-row actions-row">
-          {/* Tiendas */}
           <div className="toolbar__export" ref={storesRef}>
             <button
               type="button"
@@ -365,7 +362,6 @@ export default function Productos() {
             </div>
           </div>
 
-          {/* Filas */}
           <div className="toolbar__export" ref={rowsRef}>
             <button
               type="button"
@@ -393,7 +389,6 @@ export default function Productos() {
             </div>
           </div>
 
-          {/* Exportar */}
           <div className="toolbar__export" ref={exportRef}>
             <button
               type="button"

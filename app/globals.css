@@ -145,11 +145,8 @@ strong { color: #111827; }
 .toolbar-group { display: flex; flex-direction: column; gap: 6px; min-width: 220px; }
 .toolbar-label { font-size: .9rem; color: #1E40AF; font-weight: 700; }
 
-/* ancla del dropdown */
+/* Ancla buscador */
 .search-group { position: relative; }
-
-/* 🔹 NUEVO: ancla estricta del dropdown al input */
-.sugg-anchor { position: relative; }
 
 /* Inputs */
 .toolbar-input,
@@ -172,16 +169,18 @@ strong { color: #111827; }
 /* =========================================================
    AUTOCOMPLETE / SUGERENCIAS
    ========================================================= */
+.sugg-anchor { position: relative; }
 .sugg-panel {
   position: absolute;
-  top: calc(100% + 4px);  /* SIEMPRE pegado al input */
-  left: 0; right: 0;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0,0,0,.12);
   padding: 8px;
-  z-index: 999;           /* por sobre chips / selects */
+  z-index: 999;
   max-height: 280px;
   overflow-y: auto;
 }
@@ -197,40 +196,52 @@ strong { color: #111827; }
 .sugg-foot { margin-top: 6px; font-size: .85rem; color: #6B7280; text-align: center; }
 
 /* =========================================================
-   CHIPS / PRODUCTOS SELECCIONADOS — horizontales
+   CHIPS / PRODUCTOS SELECCIONADOS (ahora horizontales en desktop)
    ========================================================= */
-.chips-inline{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  margin-top:6px;
-  flex-wrap:wrap;
+.chips-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  flex-wrap: wrap;
 }
-.toolbar-chips{
-  display:flex;
-  flex:1;
-  gap:8px;
-  flex-wrap:wrap;
-  min-width:260px;
-  align-items:center;
+.toolbar-chips {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 260px;
+  align-items: center;
 }
-.chip{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:6px 10px;
-  border-radius:9999px;
-  border:1px solid #d1d5db;
-  background:#fff;
-  color:#1E40AF;
-  font-weight:600;
-  font-size:.85rem;
-  line-height:1;
-  white-space:nowrap;   /* no partir palabras */
-  flex:0 0 auto;        /* no crecer ni encogerse: se alinean en fila */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 9999px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #1E40AF;
+  font-weight: 600;
+  font-size: .85rem;
+  line-height: 1;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
-.chip-active{ background:#1E3A8A; color:#fff; border-color:#1E3A8A; }
-.chip-x{ border:none; background:transparent; color:#fff; font-size:.95rem; cursor:pointer; }
+.chip-active { background: #1E3A8A; color: #fff; border-color: #1E3A8A; }
+.chip-x { border: none; background: transparent; color: #fff; font-size: .95rem; cursor: pointer; }
+
+/* Desktop: distribuir chips horizontalmente */
+@media (min-width: 768px) {
+  .chips-inline { width: 100%; }
+  .toolbar-chips {
+    width: 100%;
+    flex-direction: row !important;
+    justify-content: flex-start;
+    align-items: center;
+  }
+  .toolbar-chips .chip { flex: 0 0 auto; }
+}
 
 /* =========================================================
    BOTONES / POPOVERS

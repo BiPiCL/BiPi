@@ -28,13 +28,10 @@ strong { color: #111827; }
   backdrop-filter: blur(8px);
   border-bottom: 1px solid #E5E7EB;
 }
-
-/* Soporta .nav-flex (tu CSS anterior) y .nav-inner (si en layout usas ese) */
 .nav-flex, .nav-inner {
   display: flex; align-items: center; justify-content: space-between; min-height: 64px;
   max-width: 1100px; margin: 0 auto; padding: 8px 16px;
 }
-
 .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
 .brand-name { color: #1E3A8A; font-weight: 800; font-size: 1.15rem; }
 .brand-badge {
@@ -48,7 +45,7 @@ strong { color: #111827; }
 .nav-links a:hover { color: #2563EB; text-decoration: underline; }
 
 /* =========================================================
-   HOME / INICIO — títulos centrados (como se ve en la captura)
+   HOME / INICIO — títulos centrados
    ========================================================= */
 .page-title {
   font-size: clamp(1.8rem, 3.5vw, 2.2rem);
@@ -131,7 +128,7 @@ strong { color: #111827; }
 }
 
 /* =========================================================
-   TOOLBAR / PRODUCTOS (la tarjeta blanca de filtros)
+   TOOLBAR / PRODUCTOS (tarjeta blanca de filtros)
    ========================================================= */
 .toolbar {
   background: #fff;
@@ -177,14 +174,14 @@ strong { color: #111827; }
    ========================================================= */
 .sugg-panel {
   position: absolute;
-  top: calc(100% + 6px);  /* pegado, como en móvil de la captura */
+  top: calc(100% + 6px);
   left: 0; right: 0;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0,0,0,.12);
   padding: 8px;
-  z-index: 2000;          /* sobre chips/tabla */
+  z-index: 2000;
   max-height: 280px;
   overflow-y: auto;
 }
@@ -200,12 +197,9 @@ strong { color: #111827; }
 .sugg-foot { margin-top: 6px; font-size: .85rem; color: #6B7280; text-align: center; }
 
 /* =========================================================
-   CHIPS / PRODUCTOS SELECCIONADOS (píldoras)
+   CHIPS / PRODUCTOS SELECCIONADOS
    ========================================================= */
-.chips-inline {
-  display: flex; flex-wrap: wrap; align-items: center;
-  gap: 8px 10px; margin-top: 8px;
-}
+.chips-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 8px; }
 .toolbar-chips {
   display: flex;
   flex: 1;
@@ -237,7 +231,7 @@ strong { color: #111827; }
   .toolbar-row.chips-row { width: 100%; align-items: center; flex-wrap: wrap; }
   .toolbar-row.chips-row .toolbar-chips {
     flex: 1 1 auto !important;
-    min-width: 0;      /* evita saltos por anchos forzados */
+    min-width: 0;
     width: 100%;
     display: flex !important;
     flex-direction: row !important;
@@ -249,19 +243,19 @@ strong { color: #111827; }
   .toolbar-row.chips-row .btn { margin-left: auto; }
 }
 
-/* Móvil: pequeña separación del botón respecto a las chips */
+/* Móvil: separación sutil del botón respecto a las chips */
 @media (max-width: 1023.98px) {
   .toolbar-row.chips-row { gap: 10px 10px; }
   .toolbar-row.chips-row .btn { margin-top: 6px; }
 }
 
 /* =========================================================
-   BOTONES / POPOVERS (píldoras azules/grises)
+   BOTONES / POPOVERS (píldoras)
    ========================================================= */
 .btn {
   appearance: none;
   border: 1px solid transparent;
-  border-radius: 9999px; /* pill look */
+  border-radius: 9999px;
   padding: 10px 16px;
   font-weight: 700;
   cursor: pointer;
@@ -301,24 +295,16 @@ strong { color: #111827; }
 .dot.on { background: #1E3A8A; }
 
 /* =========================================================
-   TABLA (con indicadores de scroll a los lados)
+   TABLA (sin difuminado en los lados)
    ========================================================= */
 .table-wrapper {
   position: relative;
   overflow-x: auto;
   margin-top: 10px;
   scroll-behavior: smooth;
-  padding: 0 8px;
+  padding: 0;                /* sin padding lateral */
 }
-.table-wrapper::before,
-.table-wrapper::after {
-  content: '';
-  position: absolute; top: 0;
-  width: 32px; height: 100%;
-  pointer-events: none; z-index: 10;
-}
-.table-wrapper::before { left: 0;  background: linear-gradient(to right, #F9FAFB 40%, transparent); }
-.table-wrapper::after  { right: 0; background: linear-gradient(to left,  #F9FAFB 40%, transparent); }
+/* 🔴 Eliminados los pseudo-elementos ::before/::after (difuminados) */
 
 .scroll-indicator {
   position: absolute;
@@ -333,7 +319,12 @@ strong { color: #111827; }
 .scroll-indicator.left  { left: -14px; }
 .scroll-indicator.right { right: -14px; }
 
-table { border-collapse: collapse; width: 100%; min-width: 600px; }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 600px;
+  border: 1px solid #E5E7EB;   /* borde externo de la tabla */
+}
 th, td { border-bottom: 1px solid #E5E7EB; padding: 10px 12px; text-align: left; }
 th { font-weight: 800; color: #111827; background: #F3F4F6; white-space: nowrap; }
 td { color: #111827; font-weight: 500; }

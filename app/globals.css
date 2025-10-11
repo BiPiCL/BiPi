@@ -1,198 +1,371 @@
-/* ====== RESET GENERAL ====== */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* =========================================================
+   BiPi Chile — Estilos Globales (versión centrada del Hero)
+   ========================================================= */
+
+/* === Reset global === */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background: #F9FAFB;
+  color: #111827;
+  line-height: 1.6;
+  scroll-behavior: smooth;
 }
 
-body {
-  font-family: 'Inter', sans-serif;
-  background: #f8f9fb;
-  color: #111;
-}
+/* === Utilidades === */
+.container { max-width: 1000px; margin: 0 auto; padding: 0 16px; }
+.muted { color: #6B7280; }
+strong { color: #111827; }
 
-/* ====== NAVBAR ====== */
+/* =========================================================
+   NAVBAR (blanco con blur como en la captura)
+   ========================================================= */
 .navbar {
-  background: #0a3c91;
-  color: #fff;
-  padding: 0.8rem 0;
-}
-.navbar .container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.navbar a {
-  color: #fff;
-  text-decoration: none;
-  margin-left: 1.2rem;
-  font-weight: 500;
-}
-.logo {
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-.icon {
-  margin-right: 4px;
+  position: sticky; top: 0; z-index: 50;
+  background: #FFFFFFE6;
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #E5E7EB;
 }
 
-/* ====== CONTAINER ====== */
-.container {
-  width: 95%;
-  max-width: 1200px;
-  margin: 2rem auto;
+/* Soporta .nav-flex (tu CSS anterior) y .nav-inner (si en layout usas ese) */
+.nav-flex, .nav-inner {
+  display: flex; align-items: center; justify-content: space-between; min-height: 64px;
+  max-width: 1100px; margin: 0 auto; padding: 8px 16px;
 }
 
-/* ====== HERO ====== */
-.hero {
+.brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+.brand-name { color: #1E3A8A; font-weight: 800; font-size: 1.15rem; }
+.brand-badge {
+  width: 36px; height: 36px; border-radius: 9999px;
+  background: #1E3A8A; color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 6px rgba(30,58,138,.35); font-size: 18px;
+}
+.nav-links { display: flex; gap: 18px; }
+.nav-links a { color: #1f2937; font-weight: 600; text-decoration: none; }
+.nav-links a:hover { color: #2563EB; text-decoration: underline; }
+
+/* =========================================================
+   HOME / INICIO — títulos centrados (como se ve en la captura)
+   ========================================================= */
+.page-title {
+  font-size: clamp(1.8rem, 3.5vw, 2.2rem);
+  font-weight: 800;
+  color: #1E3A8A;
   text-align: center;
-  padding: 4rem 1rem;
-  background: #0a3c91;
-  color: white;
-  border-radius: 16px;
+  margin: 28px 0 14px;
 }
-.hero h1 {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-}
-.hero p {
-  font-size: 1.1rem;
-  margin-bottom: 1.5rem;
-}
-.hero .btn {
-  background: #ffd600;
-  color: #111;
-  font-weight: 600;
-  padding: 0.8rem 1.5rem;
-  border-radius: 8px;
-  text-decoration: none;
+.lead {
+  max-width: 760px;
+  margin: 0 auto 22px auto;
+  color: #374151;
+  text-align: center;
 }
 
-/* ====== TOOLBAR / BUSCADOR ====== */
-.search-group {
-  position: relative;
-  width: 100%;
+/* =========================================================
+   HERO / BANNER AZUL — CENTRADO
+   ========================================================= */
+.hero {
+  background: linear-gradient(135deg, #1E3A8A, #2563EB);
+  color: #fff;
+  border-radius: 18px;
+  padding: 42px 20px;
+  margin: 10px auto 34px auto;
+  box-shadow: 0 10px 25px rgba(30, 64, 175, .25);
+  opacity: 0;
+  transform: translateY(24px);
+  animation: fadeInUp 0.9s ease forwards;
+  text-align: center;
 }
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-center { text-align: center; max-width: 760px; margin: 0 auto; }
+.hero-badge {
+  background: rgba(255, 255, 255, .18);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: 9999px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(255, 255, 255, .15);
+  margin: 0 auto 12px auto;
+  width: max-content;
+}
+.hero-cart { font-size: 1.4rem; }
+.hero-title {
+  display: block;
+  font-weight: 800;
+  color: #fff;
+  margin: 4px 0 8px 0;
+  font-size: clamp(1.5rem, 4.2vw, 2.2rem);
+  text-align: center;
+}
+.hero-title .hero-money { font-size: 1.6rem; margin-left: 10px; vertical-align: middle; }
+.hero-text {
+  color: #fff; opacity: .95;
+  margin: 10px auto 22px auto;
+  max-width: 680px;
+  text-align: center;
+  font-size: clamp(1rem, 2.6vw, 1.1rem);
+}
+.hero-btn {
+  background: #FACC15; color: #1E3A8A; font-weight: 800;
+  padding: 12px 26px; border-radius: 9999px;
+  display: inline-flex; gap: 8px; text-decoration: none;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, .25);
+  transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+  margin: 0 auto;
+}
+.hero-btn:hover { background: #eab308; transform: translateY(-1px) scale(1.04); }
+@media (max-width: 420px) {
+  .hero { padding: 36px 16px; }
+  .hero-title { font-size: 1.55rem; }
+  .hero-title .hero-money { font-size: 1.4rem; }
+  .hero-btn { padding: 10px 22px; font-size: .95rem; }
+}
+
+/* =========================================================
+   TOOLBAR / PRODUCTOS (la tarjeta blanca de filtros)
+   ========================================================= */
+.toolbar {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px;
+  margin: 14px 0 18px;
+  box-shadow: 0 4px 10px rgba(0,0,0,.04);
+}
+.toolbar-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.toolbar-group { display: flex; flex-direction: column; gap: 6px; min-width: 220px; }
+.toolbar-label { font-size: .9rem; color: #1E40AF; font-weight: 700; }
+
+/* ancla del dropdown tope-buscador */
+.search-group { position: relative; }
+
+/* Inputs */
+.toolbar-input,
+.toolbar-select {
+  height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  outline: none;
+  background: #fff;
+  color: #1E40AF;
+  appearance: none;
+}
+.toolbar-input::placeholder { color: #64748b; }
+.toolbar-input:focus, .toolbar-select:focus {
+  border-color: #2563EB;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+}
+
+/* =========================================================
+   AUTOCOMPLETE / SUGERENCIAS (pegado al input)
+   ========================================================= */
 .sugg-panel {
   position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 999;
+  top: calc(100% + 6px);  /* pegado, como en móvil de la captura */
+  left: 0; right: 0;
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  padding: 0.6rem 1rem;
-  max-height: 240px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.12);
+  padding: 8px;
+  z-index: 2000;          /* sobre chips/tabla */
+  max-height: 280px;
   overflow-y: auto;
 }
-.sugg-panel p {
-  margin: 0.4rem 0;
-  color: #0a3c91;
-  font-weight: 600;
-  cursor: pointer;
+.sugg-item {
+  width: 100%;
+  text-align: left;
+  border: none; background: #fff;
+  padding: 8px 10px; border-radius: 8px;
+  font-weight: 700; color: #1E40AF; cursor: pointer;
+  font-size: .95rem;
 }
-.sugg-panel p:hover {
-  text-decoration: underline;
-}
+.sugg-item:hover { background: #F3F4F6; }
+.sugg-foot { margin-top: 6px; font-size: .85rem; color: #6B7280; text-align: center; }
 
-/* ====== CHIPS ====== */
+/* =========================================================
+   CHIPS / PRODUCTOS SELECCIONADOS (píldoras)
+   ========================================================= */
+.chips-inline {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 8px 10px; margin-top: 8px;
+}
 .toolbar-chips {
   display: flex;
-  flex-wrap: wrap;
+  flex: 1;
   gap: 8px;
-  margin-top: 8px;
-  margin-bottom: 6px;
-}
-
-.chip {
-  background: #0a3c91;
-  color: #fff;
-  border-radius: 20px;
-  padding: 4px 10px;
-  font-size: 0.85rem;
-  display: flex;
+  flex-wrap: wrap;
+  min-width: 260px;
   align-items: center;
-  gap: 4px;
-  white-space: nowrap;
 }
-.chip button {
-  background: transparent;
-  border: none;
-  color: #fff;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
-/* Separación del botón "Limpiar búsqueda" */
-.btn-ghost {
-  margin-top: 6px;
-  margin-bottom: 8px;
-  background: #f3f5f9;
-  border: 1px solid #d4d7dd;
-  border-radius: 8px;
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 10px;
+  border-radius: 9999px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #1E40AF;
+  font-weight: 600;
+  font-size: .85rem;
+  line-height: 1;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+.chip-active { background: #1E3A8A; color: #fff; border-color: #1E3A8A; }
+.chip-x { border: none; background: transparent; color: #fff; font-size: .95rem; cursor: pointer; }
+
+/* Desktop: chips en horizontal y “Limpiar búsqueda” a la derecha */
+@media (min-width: 1024px) {
+  .toolbar-row.chips-row { width: 100%; align-items: center; flex-wrap: wrap; }
+  .toolbar-row.chips-row .toolbar-chips {
+    flex: 1 1 auto !important;
+    min-width: 0;      /* evita saltos por anchos forzados */
+    width: 100%;
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 10px;
+  }
+  .toolbar-row.chips-row .chip { flex: 0 0 auto; width: auto; }
+  .toolbar-row.chips-row .btn { margin-left: auto; }
+}
+
+/* Móvil: pequeña separación del botón respecto a las chips */
+@media (max-width: 1023.98px) {
+  .toolbar-row.chips-row { gap: 10px 10px; }
+  .toolbar-row.chips-row .btn { margin-top: 6px; }
+}
+
+/* =========================================================
+   BOTONES / POPOVERS (píldoras azules/grises)
+   ========================================================= */
+.btn {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 9999px; /* pill look */
+  padding: 10px 16px;
+  font-weight: 700;
   cursor: pointer;
-  font-weight: 500;
-  color: #0a3c91;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
 }
-.btn-ghost:hover {
-  background: #e7ebf4;
-}
+.btn-sm { padding: 8px 12px; font-size: .9rem; }
+.btn-secondary { background: #fff; color: #1E40AF; border: 1px solid #d1d5db; }
+.btn-secondary:hover { border-color: #2563EB; color: #2563EB; background: #f9fafb; transform: translateY(-1px); }
+.btn-ghost { background: #F3F4F6; color: #1E40AF; border: 1px solid #E5E7EB; }
+.btn-ghost:hover { background: #e9eaec; border-color: #2563EB; color: #2563EB; }
 
-/* ====== TABLA ====== */
-.table-container {
-  overflow-x: auto;
-  position: relative;
-}
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: white;
+.toolbar__export { position: relative; display: inline-flex; }
+.export-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
-  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,.08);
+  padding: 10px;
+  min-width: 210px;
+  display: none;
+  z-index: 40;
 }
-th {
-  background: #f3f5f9;
-  padding: 0.8rem;
-  text-align: left;
-  font-weight: 600;
-}
-td {
-  padding: 0.7rem;
-  border-top: 1px solid #e2e5ea;
-}
-tr:hover {
-  background: #f9fafc;
-}
-.highlight {
-  background: #d9f7d9 !important;
-  color: #007a00;
-  font-weight: 600;
-}
+.export-menu.show { display: flex; flex-direction: column; gap: 8px; }
 
-/* ====== FOOTER ====== */
+.store-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border-radius: 9999px;
+  border: 1px solid #d1d5db; background: #fff; color: #1E40AF;
+  font-weight: 700; cursor: pointer;
+}
+.store-pill:hover { border-color: #2563EB; color: #2563EB; background: #f9fafb; }
+.dot { width: 8px; height: 8px; border-radius: 9999px; background: #d1d5db; display: inline-block; }
+.dot.on { background: #1E3A8A; }
+
+/* =========================================================
+   TABLA (con indicadores de scroll a los lados)
+   ========================================================= */
+.table-wrapper {
+  position: relative;
+  overflow-x: auto;
+  margin-top: 10px;
+  scroll-behavior: smooth;
+  padding: 0 8px;
+}
+.table-wrapper::before,
+.table-wrapper::after {
+  content: '';
+  position: absolute; top: 0;
+  width: 32px; height: 100%;
+  pointer-events: none; z-index: 10;
+}
+.table-wrapper::before { left: 0;  background: linear-gradient(to right, #F9FAFB 40%, transparent); }
+.table-wrapper::after  { right: 0; background: linear-gradient(to left,  #F9FAFB 40%, transparent); }
+
+.scroll-indicator {
+  position: absolute;
+  top: 45%; transform: translateY(-50%);
+  font-size: 22px; font-weight: 800; color: #2563EB;
+  background: #fff; border-radius: 50%;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  z-index: 20;
+}
+.scroll-indicator.left  { left: -14px; }
+.scroll-indicator.right { right: -14px; }
+
+table { border-collapse: collapse; width: 100%; min-width: 600px; }
+th, td { border-bottom: 1px solid #E5E7EB; padding: 10px 12px; text-align: left; }
+th { font-weight: 800; color: #111827; background: #F3F4F6; white-space: nowrap; }
+td { color: #111827; font-weight: 500; }
+td strong { font-weight: 800; }
+
+/* =========================================================
+   FOOTER / TOAST
+   ========================================================= */
 .footer {
-  background: #0a3c91;
-  color: white;
+  border-top: 1px solid #E5E7EB;
+  margin-top: 40px;
+  padding: 20px 16px;
+  color: #6B7280;
   text-align: center;
-  padding: 1.2rem;
-  font-size: 0.9rem;
+  display: flex; flex-direction: column; gap: 8px;
+  font-size: .9rem;
 }
-.footer a {
-  color: #ffd600;
-}
+.footer a { color: #2563EB; text-decoration: none; }
+.footer a:hover { color: #1D4ED8; text-decoration: underline; }
 
-/* ====== RESPONSIVE ====== */
-@media (max-width: 768px) {
-  .hero h1 {
-    font-size: 1.6rem;
-  }
-  .toolbar-chips {
-    margin-top: 10px;
-    gap: 6px;
-  }
-  .btn-ghost {
-    margin-top: 8px;
-  }
+.toast {
+  position: fixed;
+  left: 50%; transform: translateX(-50%);
+  bottom: 24px;
+  background: #111827; color: #fff;
+  padding: 10px 14px; border-radius: 9999px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.25);
+  font-weight: 700; z-index: 90;
+  animation: fadeInOut 2.2s ease forwards;
+}
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, 20px); }
+  10%,90% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, 20px); }
 }

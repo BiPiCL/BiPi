@@ -248,6 +248,23 @@ export default function Productos() {
   /* ===== Render ===== */
   const pageItems = useMemo(() => filteredSorted.slice(0, rowsPerPage), [filteredSorted, rowsPerPage]);
 
+  /* Totales por tienda (de lo que se ve en la tabla) */
+  const totals = useMemo(() => {
+    const t = Object.fromEntries(visibleStores.map((s) => [s, 0]));
+    pageItems.forEach(([, info]) => {
+      visibleStores.forEach((s) => {
+        const v = info.precios[s];
+        if (typeof v === 'number') t[s] += v;
+      });
+    });
+    return t;
+  }, [pageItems, visibleStores]);
+
+  const minTotal = useMemo(() => {
+    const vals = visibleStores.map((s) => totals[s]).filter((n) => typeof n === 'number');
+    return vals.length ? Math.min(...vals) : null;
+  }, [totals, visibleStores]);
+
   return (
     <main className="container" style={{ paddingTop: 18, paddingBottom: 24 }}>
       <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>
@@ -481,9 +498,7 @@ export default function Productos() {
 
       {/* ===== Tabla ===== */}
       <div className="table-wrapper">
-        <span className="scroll-indicator left">‹</span>
-        <span className="scroll-indicator right">›</span>
-
+        {/* 🔸 Quitamos los circulitos de scroll: ya NO renderizamos nada aquí */}
         <table>
           <thead>
             <tr>
@@ -511,42 +526,71 @@ export default function Productos() {
           )}
 
           {!loading && (
-            <tbody>
-              {pageItems.length === 0 && (
-                <tr>
-                  <td colSpan={2 + visibleStores.length} style={{ padding: 16, color: '#6B7280', textAlign: 'center' }}>
-                    No se encontraron productos para la búsqueda/filtros actuales.
-                  </td>
-                </tr>
-              )}
+            <>
+              <tbody>
+                {pageItems.length === 0 && (
+                  <tr>
+                    <td colSpan={2 + visibleStores.length} style={{ padding: 16, color: '#6B7280', textAlign: 'center' }}>
+                      No se encontraron productos para la búsqueda/filtros actuales.
+                    </td>
+                  </tr>
+                )}
 
-              {pageItems.map(([nombre, info]) => {
-                const min = cheapestVisible(info.precios, visibleStores);
-                return (
-                  <tr key={nombre}>
-                    <td>{nombre}</td>
-                    <td>{info.formato || '—'}</td>
+                {pageItems.map(([nombre, info]) => {
+                  const min = cheapestVisible(info.precios, visibleStores);
+                  return (
+                    <tr key={nombre}>
+                      <td>{nombre}</td>
+                      <td>{info.formato || '—'}</td>
+                      {visibleStores.map((s) => {
+                        const val = info.precios[s];
+                        const isMin = min != null && val === min;
+                        return (
+                          <td
+                            key={s}
+                            style={{
+                              textAlign: 'right',
+                              fontWeight: isMin ? 700 : 500,
+                              background: isMin ? '#e6f7e6' : 'transparent',
+                              color: isMin ? '#006400' : '#111827',
+                            }}
+                          >
+                            {val != null ? CLP(val) : '—'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+
+              {/* ===== Totales ===== */}
+              {pageItems.length > 0 && (
+                <tfoot>
+                  <tr>
+                    <td style={{ fontWeight: 800 }}>Total</td>
+                    <td>—</td>
                     {visibleStores.map((s) => {
-                      const val = info.precios[s];
-                      const isMin = min != null && val === min;
+                      const total = totals[s];
+                      const isMin = minTotal != null && total === minTotal;
                       return (
                         <td
-                          key={s}
+                          key={`tot-${s}`}
                           style={{
                             textAlign: 'right',
-                            fontWeight: isMin ? 700 : 500,
-                            background: isMin ? '#e6f7e6' : 'transparent',
+                            fontWeight: isMin ? 800 : 700,
+                            background: isMin ? '#e6f7e6' : '#F3F4F6',
                             color: isMin ? '#006400' : '#111827',
                           }}
                         >
-                          {val != null ? CLP(val) : '—'}
+                          {CLP(total)}
                         </td>
                       );
                     })}
                   </tr>
-                );
-              })}
-            </tbody>
+                </tfoot>
+              )}
+            </>
           )}
         </table>
       </div>

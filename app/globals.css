@@ -42,7 +42,7 @@ strong { color: #111827; }
 .nav-links a:hover { color: #2563EB; text-decoration: underline; }
 
 /* =========================================================
-   HOME / INICIO
+   HOME / INICIO — títulos centrados
    ========================================================= */
 .page-title {
   font-size: clamp(1.8rem, 3.5vw, 2.2rem);
@@ -137,7 +137,7 @@ strong { color: #111827; }
 }
 .toolbar-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;   /* asegura alineación alta, útil para chips */
   gap: 14px;
   flex-wrap: wrap;
   margin-bottom: 8px;
@@ -145,10 +145,10 @@ strong { color: #111827; }
 .toolbar-group { display: flex; flex-direction: column; gap: 6px; min-width: 220px; }
 .toolbar-label { font-size: .9rem; color: #1E40AF; font-weight: 700; }
 
-/* 🔹 NUEVO: ancla del dropdown de sugerencias */
+/* ancla del dropdown tope-buscador */
 .search-group { position: relative; }
 
-/* Input y select */
+/* Inputs */
 .toolbar-input,
 .toolbar-select {
   height: 38px;
@@ -171,14 +171,16 @@ strong { color: #111827; }
    ========================================================= */
 .sugg-panel {
   position: absolute;
+  /* SIEMPRE bajo el input, independientemente de los chips */
   top: calc(100% + 4px);
-  left: 0; right: 0;
+  left: 0;
+  right: 0;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.08);
+  box-shadow: 0 10px 30px rgba(0,0,0,.12);
   padding: 8px;
-  z-index: 99;
+  z-index: 999;           /* por sobre chips / selects */
   max-height: 280px;
   overflow-y: auto;
 }
@@ -186,32 +188,39 @@ strong { color: #111827; }
   width: 100%;
   text-align: left;
   border: none; background: #fff;
-  padding: 10px 12px; border-radius: 10px;
+  padding: 8px 10px; border-radius: 8px;
   font-weight: 700; color: #1E40AF; cursor: pointer;
+  font-size: .95rem;
 }
 .sugg-item:hover { background: #F3F4F6; }
 .sugg-foot { margin-top: 6px; font-size: .85rem; color: #6B7280; text-align: center; }
 
 /* =========================================================
-   CHIPS / PRODUCTOS SELECCIONADOS
+   CHIPS / PRODUCTOS SELECCIONADOS (más pequeños y horizontales)
    ========================================================= */
+.chips-row { align-items: center; }
 .toolbar-chips {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
   flex: 1;
+  gap: 8px;
+  flex-wrap: wrap;              /* ocupa en horizontal y salta si no cabe */
+  min-width: 260px;
 }
 .chip {
-  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;            /* ~50% más pequeño */
   border-radius: 9999px;
   border: 1px solid #d1d5db;
   background: #fff;
   color: #1E40AF;
   font-weight: 600;
-  font-size: .9rem;
+  font-size: .85rem;            /* más pequeño */
+  line-height: 1;
 }
 .chip-active { background: #1E3A8A; color: #fff; border-color: #1E3A8A; }
-.chip-x { border: none; background: transparent; color: #fff; font-size: 1rem; cursor: pointer; margin-left: 8px; }
+.chip-x { border: none; background: transparent; color: #fff; font-size: .95rem; cursor: pointer; }
 
 /* =========================================================
    BOTONES / POPOVERS

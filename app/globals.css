@@ -1,15 +1,17 @@
 /* =========================================================
-   BiPi Chile — Estilos Globales (versión estable + mejoras)
+   BiPi Chile — Estilos Globales (versión final + HERO)
    ========================================================= */
 
+/* === Reset global === */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
-               Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   background: #F9FAFB;
   color: #111827;
   line-height: 1.6;
+  scroll-behavior: smooth;
 }
 
 /* === Utilidades === */
@@ -39,6 +41,104 @@ strong { color: #111827; }
 .nav-links a { color: #1f2937; font-weight: 600; text-decoration: none; }
 .nav-links a:hover { color: #2563EB; text-decoration: underline; }
 
+@media (max-width: 640px) {
+  .nav-flex { gap: 12px; }
+  .brand-name { font-size: 1.05rem; }
+  .nav-links a { font-size: 0.95rem; }
+}
+
+/* =========================================================
+   HOME / INICIO (título + lead)
+   ========================================================= */
+.page-title {
+  font-size: clamp(1.8rem, 3.5vw, 2.2rem);
+  font-weight: 800;
+  color: #1E3A8A;
+  text-align: left;
+  margin: 28px 0 14px;
+}
+.lead {
+  max-width: 760px;
+  margin: 0 0 22px 0;
+  color: #374151;
+}
+
+/* =========================================================
+   HERO / BANNER (Azul con botón amarillo) — RESTAURADO
+   ========================================================= */
+.hero {
+  background: linear-gradient(135deg, #1E3A8A, #2563EB);
+  color: #fff;
+  border-radius: 18px;
+  padding: 42px 20px;
+  margin: 10px 0 34px 0;
+  box-shadow: 0 10px 25px rgba(30, 64, 175, .25);
+  opacity: 0;
+  transform: translateY(24px);
+  animation: fadeInUp 0.9s ease forwards;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-center {
+  text-align: left;
+  max-width: 760px;
+}
+.hero-badge {
+  background: rgba(255, 255, 255, .18);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: 9999px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(255, 255, 255, .15);
+  margin: 0 0 12px 0;
+  width: max-content;
+}
+.hero-cart { font-size: 1.4rem; }
+.hero-title {
+  display: block;
+  font-weight: 800;
+  color: #fff;
+  margin: 4px 0 8px 0;
+  font-size: clamp(1.5rem, 4.2vw, 2.2rem);
+}
+.hero-title .hero-money {
+  font-size: 1.6rem;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+.hero-text {
+  color: #fff;
+  opacity: .95;
+  margin: 10px 0 22px 0;
+  max-width: 680px;
+  text-align: justify;
+  font-size: clamp(1rem, 2.6vw, 1.1rem);
+}
+.hero-btn {
+  background: #FACC15;
+  color: #1E3A8A;
+  font-weight: 800;
+  padding: 12px 26px;
+  border-radius: 9999px;
+  display: inline-flex;
+  gap: 8px;
+  text-decoration: none;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, .25);
+  transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+}
+.hero-btn:hover { background: #eab308; transform: translateY(-1px) scale(1.04); }
+@media (max-width: 420px) {
+  .hero { padding: 36px 16px; }
+  .hero-title { font-size: 1.55rem; }
+  .hero-title .hero-money { font-size: 1.4rem; }
+  .hero-btn { padding: 10px 22px; font-size: .95rem; }
+}
+
 /* =========================================================
    TOOLBAR / PRODUCTOS
    ========================================================= */
@@ -51,7 +151,7 @@ strong { color: #111827; }
   box-shadow: 0 4px 10px rgba(0,0,0,.04);
 }
 
-/* Fila base (móvil) */
+/* fila flexible clásica */
 .toolbar-row {
   display: flex;
   align-items: center;
@@ -60,27 +160,25 @@ strong { color: #111827; }
   margin-bottom: 8px;
 }
 
-.toolbar-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 220px; }
-.toolbar-label { font-size: .9rem; color: #1E40AF; font-weight: 700; }
-.search-group { position: relative; } /* para anclar sugerencias */
-
-/* En DESKTOP, fijamos layout con GRID para que los chips no empujen nada */
-@media (min-width: 900px) {
-  .toolbar-grid {
-    display: grid;
-    grid-template-columns: 1fr 240px 240px; /* Buscar | Categoría | Ordenar */
-    grid-auto-rows: auto;
-    column-gap: 14px;
-    row-gap: 8px;
-    align-items: start;
-  }
-  .toolbar-grid > .toolbar-group:nth-child(1) { grid-column: 1; } /* Buscar */
-  .toolbar-grid > .toolbar-group:nth-child(2) { grid-column: 2; } /* Categoría */
-  .toolbar-grid > .toolbar-group:nth-child(3) { grid-column: 3; } /* Ordenar */
-  .chips-grid-slot { grid-column: 1 / 2; } /* Chips solo debajo de Buscar */
+/* NUEVO: grid para mantener “Categoría” y “Ordenar” fijos en desktop,
+   aunque aparezcan chips/sugerencias bajo “Buscar” */
+.toolbar-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .toolbar-grid { grid-template-columns: 1fr; }
 }
 
-/* Input y select */
+.toolbar-group { display: flex; flex-direction: column; gap: 6px; min-width: 220px; }
+.toolbar-label { font-size: .9rem; color: #1E40AF; font-weight: 700; }
+
+/* Grupo de búsqueda debe ser relativo para anclar las sugerencias */
+.search-group { position: relative; }
+
+/* Inputs y Selects */
 .toolbar-input,
 .toolbar-select {
   height: 38px;
@@ -93,28 +191,26 @@ strong { color: #111827; }
   appearance: none;
 }
 .toolbar-input::placeholder { color: #64748b; }
-.toolbar-input:focus, .toolbar-select:focus {
+.toolbar-input:focus,
+.toolbar-select:focus {
   border-color: #2563EB;
-  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
 }
-
-/* iPhone/Safari select text color */
-select, option { color: #1E40AF !important; }
 
 /* =========================================================
    AUTOCOMPLETE / SUGERENCIAS
-   (aparecen SIEMPRE pegadas al input de Buscar y sobreponen chips)
    ========================================================= */
 .sugg-panel {
   position: absolute;
-  top: calc(100% + 6px); /* justo bajo el input */
-  left: 0; right: 0;
+  top: calc(100% + 4px);        /* pegado al input */
+  left: 0;
+  right: 0;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0,0,0,.08);
   padding: 8px;
-  z-index: 200;           /* sobre chips y otros controles */
+  z-index: 99;
   max-height: 280px;
   overflow-y: auto;
 }
@@ -130,27 +226,34 @@ select, option { color: #1E40AF !important; }
   cursor: pointer;
 }
 .sugg-item:hover { background: #F3F4F6; }
-.sugg-foot { margin-top: 6px; font-size: .85rem; color: #6B7280; text-align: center; }
+.sugg-foot {
+  margin-top: 6px;
+  font-size: .85rem;
+  color: #6B7280;
+  text-align: center;
+}
 
 /* =========================================================
    CHIPS / PRODUCTOS SELECCIONADOS
    ========================================================= */
 .toolbar-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 6px;
+  display: flex; flex-wrap: wrap; gap: 8px;
 }
+.chips-grid-slot { grid-column: 1 / 2; } /* chips permanecen bajo “Buscar” en desktop */
 .chip {
   padding: 8px 12px;
   border-radius: 9999px;
   border: 1px solid #d1d5db;
-  background: #1E3A8A;
-  color: #fff;
-  font-weight: 700;
+  background: #fff;
+  color: #1E40AF;
+  font-weight: 600;
   font-size: .9rem;
 }
-.chip-active { background: #1E3A8A; color: #fff; border-color: #1E3A8A; }
+.chip-active {
+  background: #1E3A8A;
+  color: #fff;
+  border-color: #1E3A8A;
+}
 .chip-x {
   border: none; background: transparent; color: #fff;
   font-size: 1rem; cursor: pointer; margin-left: 8px;
@@ -160,27 +263,35 @@ select, option { color: #1E40AF !important; }
    BOTONES / POPOVERS
    ========================================================= */
 .btn {
+  appearance: none;
   border: 1px solid transparent;
   border-radius: 10px;
   padding: 8px 12px;
   font-weight: 700;
   cursor: pointer;
-  transition: .2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  line-height: 1;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
 }
-.btn-sm { padding: 6px 10px; font-size: .9rem; }
+.btn-sm { padding: 8px 12px; font-size: .9rem; }
 
-.btn-secondary { background: #fff; color: #1E40AF; border: 1px solid #d1d5db; }
-.btn-secondary:hover {
-  border-color: #2563EB; color: #2563EB; background: #f9fafb; transform: translateY(-1px);
+.btn-secondary {
+  background: #fff;
+  color: #1E40AF;
+  border: 1px solid #d1d5db;
 }
-.btn-ghost { background: #F3F4F6; color: #1E40AF; border: 1px solid #E5E7EB; }
+.btn-secondary:hover {
+  border-color: #2563EB;
+  color: #2563EB;
+  background: #f9fafb;
+  transform: translateY(-1px);
+}
+.btn-ghost {
+  background: #F3F4F6; color: #1E40AF; border: 1px solid #E5E7EB;
+}
 .btn-ghost:hover { background: #e9eaec; border-color: #2563EB; color: #2563EB; }
 
-/* Popover menú (tiendas, filas, exportar) */
+/* Popover menú (exportar, tiendas, etc.) */
 .toolbar__export { position: relative; display: inline-flex; }
 .export-menu {
   position: absolute;
@@ -194,20 +305,20 @@ select, option { color: #1E40AF !important; }
   min-width: 210px;
   display: none;
   z-index: 40;
+  white-space: nowrap;
 }
 .export-menu.show { display: flex; flex-direction: column; gap: 8px; }
 
+/* Pills de tiendas */
 .store-pill {
-  padding: 10px 12px;
-  border-radius: 9999px;
-  border: 1px solid #E5E7EB;
-  background: #fff;
-  color: #1E40AF;
-  font-weight: 700;
-  display: flex; align-items: center; gap: 8px;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border-radius: 9999px;
+  border: 1px solid #d1d5db; background: #fff; color: #1E40AF;
+  font-weight: 700; cursor: pointer;
 }
-.store-pill .dot { width: 8px; height: 8px; border-radius: 9999px; background: #9CA3AF; }
-.store-pill .dot.on { background: #22c55e; }
+.store-pill:hover { border-color: #2563EB; color: #2563EB; background: #f9fafb; }
+.dot { width: 8px; height: 8px; border-radius: 9999px; background: #d1d5db; display: inline-block; }
+.dot.on { background: #1E3A8A; }
 
 /* =========================================================
    TABLA DE RESULTADOS
@@ -217,9 +328,8 @@ select, option { color: #1E40AF !important; }
   overflow-x: auto;
   margin-top: 10px;
   scroll-behavior: smooth;
+  padding: 0 8px; /* deja un pequeño margen interior para no tocar los bordes */
 }
-
-/* Degradé en bordes (pista de scroll) */
 .table-wrapper::before,
 .table-wrapper::after {
   content: '';
@@ -228,47 +338,32 @@ select, option { color: #1E40AF !important; }
   width: 32px;
   height: 100%;
   pointer-events: none;
-  z-index: 5;
+  z-index: 10;
 }
-.table-wrapper::before {
-  left: 0;
-  background: linear-gradient(to right, #F9FAFB 40%, transparent);
-}
-.table-wrapper::after {
-  right: 0;
-  background: linear-gradient(to left, #F9FAFB 40%, transparent);
-}
+.table-wrapper::before { left: 0;  background: linear-gradient(to right, #F9FAFB 40%, transparent); }
+.table-wrapper::after  { right: 0; background: linear-gradient(to left,  #F9FAFB 40%, transparent); }
 
-/* Flechas indicativas: FUERA del cuadro de precios (no tapan valores) */
+/* Flechas indicativas — fuera del cuadro */
 .scroll-indicator {
   position: absolute;
-  top: 50%;
+  top: 45%;
   transform: translateY(-50%);
-  font-size: 22px;
-  font-weight: 800;
+  font-size: 22px; font-weight: 800;
   color: #2563EB;
   background: #fff;
   border-radius: 50%;
   width: 28px; height: 28px;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 2px 8px rgba(0,0,0,.15);
-  z-index: 6;
-  pointer-events: none;
+  z-index: 20;
 }
-.scroll-indicator.left  { left: 0;  transform: translate(-120%, -50%); }
-.scroll-indicator.right { right: 0; transform: translate(120%, -50%); }
+.scroll-indicator.left  { left: -14px; }   /* fuera del wrapper */
+.scroll-indicator.right { right: -14px; }  /* fuera del wrapper */
 
-table { border-collapse: collapse; width: 100%; min-width: 720px; }
-th, td {
-  border-bottom: 1px solid #E5E7EB;
-  padding: 10px 12px;
-  text-align: left;
-}
+table { border-collapse: collapse; width: 100%; min-width: 600px; }
+th, td { border-bottom: 1px solid #E5E7EB; padding: 10px 12px; text-align: left; }
 th {
-  font-weight: 800;
-  color: #111827;
-  background: #F3F4F6;
-  white-space: nowrap;
+  font-weight: 800; color: #111827; background: #F3F4F6; white-space: nowrap;
 }
 td { color: #111827; font-weight: 500; }
 td strong { font-weight: 800; }

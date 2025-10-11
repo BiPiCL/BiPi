@@ -178,7 +178,7 @@ strong { color: #111827; }
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0,0,0,.12);
   padding: 8px;
-  z-index: 999;
+  z-index: 2000;               /* ⬆️ más alto que chips y controles */
   max-height: 280px;
   overflow-y: auto;
 }
@@ -217,12 +217,12 @@ strong { color: #111827; }
   font-size: .85rem;
   line-height: 1;
   white-space: nowrap;
-  flex: 0 0 auto;               /* no crecer, no encoger */
+  flex: 0 0 auto;
 }
 .chip-active { background: #1E3A8A; color: #fff; border-color: #1E3A8A; }
 .chip-x { border: none; background: transparent; color: #fff; font-size: .95rem; cursor: pointer; }
 
-/* 🔵 Refuerzo sólo DESKTOP: chips en horizontal debajo de “Buscar” */
+/* 🔵 Desktop: chips en horizontal debajo de “Buscar” */
 @media (min-width: 1024px) {
   .toolbar-row.chips-row {
     width: 100%;
@@ -231,7 +231,7 @@ strong { color: #111827; }
   }
   .toolbar-row.chips-row .toolbar-chips {
     flex: 1 1 auto !important;
-    min-width: 520px;           /* asegura espacio suficiente para varias chips */
+    min-width: 520px;
     display: flex !important;
     flex-direction: row !important;
     justify-content: flex-start;
@@ -240,6 +240,14 @@ strong { color: #111827; }
   }
   .toolbar-row.chips-row .chip { flex: 0 0 auto; width: auto; }
   .toolbar-row.chips-row .btn { margin-left: auto; } /* “Limpiar búsqueda” a la derecha */
+}
+
+/* 🔸 Móvil: pequeña separación del botón respecto a las chips */
+@media (max-width: 1023.98px) {
+  .toolbar-row.chips-row { gap: 10px 10px; }
+  .toolbar-row.chips-row .btn {
+    margin-top: 6px;           /* separación sutil que pediste */
+  }
 }
 
 /* =========================================================

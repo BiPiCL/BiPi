@@ -261,6 +261,31 @@ export default function Productos() {
                 <div className="sugg-foot">{suggestions.length} listado</div>
               </div>
             )}
+
+            {/* 🔹 CHIPS SIEMPRE BAJO BUSCAR (móvil y desktop) */}
+            {tokens.length > 0 && (
+              <div className="chips-inline">
+                <div className="toolbar-chips" role="list">
+                  {tokens.map((t) => (
+                    <span key={t} className="chip chip-active" role="listitem" title={t}>
+                      {t}
+                      <button
+                        type="button"
+                        className="chip-x"
+                        aria-label={`Eliminar ${t}`}
+                        onClick={() => removeToken(t)}
+                        style={{ marginLeft: 6 }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <button type="button" className="btn btn-ghost" onClick={clearSearch}>
+                  Limpiar búsqueda
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="toolbar-group" style={{ minWidth: 220 }}>
@@ -293,31 +318,6 @@ export default function Productos() {
             </select>
           </div>
         </div>
-
-        {/* Chips + Limpiar (siempre debajo del buscador) */}
-        {tokens.length > 0 && (
-          <div className="toolbar-row chips-row">
-            <div className="toolbar-chips" role="list">
-              {tokens.map((t) => (
-                <span key={t} className="chip chip-active" role="listitem" title={t}>
-                  {t}
-                  <button
-                    type="button"
-                    className="chip-x"
-                    aria-label={`Eliminar ${t}`}
-                    onClick={() => removeToken(t)}
-                    style={{ marginLeft: 6 }}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-            <button type="button" className="btn btn-ghost" onClick={clearSearch}>
-              Limpiar búsqueda
-            </button>
-          </div>
-        )}
 
         {/* Acciones */}
         <div className="toolbar-row actions-row">

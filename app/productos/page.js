@@ -48,7 +48,7 @@ export default function Productos() {
 
   /* ===== Estado filtros ===== */
   const [q, setQ] = useState('');
-  const [tokens, setTokens] = useState([]);
+  const [tokens, setTokens] = useState([]); // productos seleccionados
   const [category, setCategory] = useState('todas');
   const [order, setOrder] = useState('price-asc');
   const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -68,7 +68,6 @@ export default function Productos() {
   const storesRef = useRef(null);
   const rowsRef = useRef(null);
   const exportRef = useRef(null);
-  const searchWrapRef = useRef(null);
 
   // cerrar popovers al hacer clic fuera
   useEffect(() => {
@@ -102,10 +101,10 @@ export default function Productos() {
       }
       map[key].precios[r.tienda_slug] = r.precio_clp;
     });
-    return map;
+    return map; // { nombre: {categoria, formato, precios} }
   }, [rows]);
 
-  /* ===== Sugerencias ===== */
+  /* ===== Sugerencias de búsqueda ===== */
   const qn = norm(q);
   const suggestions = useMemo(() => {
     if (!qn) return [];
@@ -147,10 +146,12 @@ export default function Productos() {
   const filteredSorted = useMemo(() => {
     let list = Object.entries(productos);
 
+    // tokens (selección exacta)
     if (tokens.length) {
       const set = new Set(tokens);
       list = list.filter(([nombre]) => set.has(nombre));
     } else if (qn) {
+      // búsqueda libre cuando no hay tokens
       list = list.filter(([nombre, info]) => {
         const n = norm(nombre);
         const c = norm(info.categoria || '');
@@ -158,10 +159,12 @@ export default function Productos() {
       });
     }
 
+    // categoría
     if (category !== 'todas') {
       list = list.filter(([, info]) => info.categoria === category);
     }
 
+    // orden
     if (order === 'name-asc' || order === 'name-desc') {
       list.sort(([a], [b]) => (order === 'name-asc' ? a.localeCompare(b) : b.localeCompare(a)));
     } else {
@@ -192,13 +195,21 @@ export default function Productos() {
   };
 
   /* ===== Compartir búsqueda ===== */
+  const [toast, setToast] = useState('');
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2200);
+  };
+
   const copySearchLink = async () => {
     const url = new URL(window.location.href);
+    // limpiamos params anteriores
     url.searchParams.delete('q');
     url.searchParams.delete('cat');
     url.searchParams.delete('ord');
     url.searchParams.delete('tokens');
     url.searchParams.delete('stores');
+    // agregamos params activos
     if (tokens.length) url.searchParams.set('tokens', encodeURIComponent(tokens.join('|')));
     if (category !== 'todas') url.searchParams.set('cat', category);
     if (order !== 'price-asc') url.searchParams.set('ord', order);
@@ -209,6 +220,7 @@ export default function Productos() {
       await navigator.clipboard.writeText(url.toString());
       showToast('Se ha copiado el link de búsqueda');
     } catch {
+      // fallback
       const ta = document.createElement('textarea');
       ta.value = url.toString();
       document.body.appendChild(ta);
@@ -219,12 +231,25 @@ export default function Productos() {
     }
   };
 
-  /* ===== Toast ===== */
-  const [toast, setToast] = useState('');
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 2200);
+  /* ===== Tabla: indicadores de scroll ===== */
+  const twRef = useRef(null);
+  const [showL, setShowL] = useState(false);
+  const [showR, setShowR] = useState(false);
+
+  const updateScrollHints = () => {
+    const el = twRef.current;
+    if (!el) return;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    setShowL(el.scrollLeft > 2);
+    setShowR(el.scrollLeft < maxScroll - 2);
   };
+
+  useEffect(() => {
+    updateScrollHints();
+    const onResize = () => updateScrollHints();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [filteredSorted, visibleStores]);
 
   /* ===== Render ===== */
   const pageItems = useMemo(() => filteredSorted.slice(0, rowsPerPage), [filteredSorted, rowsPerPage]);
@@ -237,8 +262,9 @@ export default function Productos() {
 
       {/* ===== Toolbar ===== */}
       <section className="toolbar">
-        {/* Fila superior como GRID (Buscar | Categoría | Ordenar) */}
-        <div className="toolbar-row toolbar-grid" ref={searchWrapRef}>
+        {/* GRID: Buscar | Categoría | Ordenar */}
+        <div className="toolbar-grid">
+          {/* Buscar + sugerencias */}
           <div className="toolbar-group search-group">
             <label className="toolbar-label" htmlFor="buscar">Buscar</label>
             <input
@@ -249,61 +275,27 @@ export default function Productos() {
               placeholder="Ej: arroz, aceite, papel, sal…"
               autoComplete="off"
             />
-            {/* Sugerencias ancladas al input */}
+            {/* Sugerencias superpuestas y ancladas al input */}
             {q && suggestions.length > 0 && (
-              <div className="sugg-panel">
+              <div className="sugg-panel" role="listbox">
                 {suggestions.map((name) => (
                   <button
                     key={name}
                     type="button"
                     className="sugg-item"
-                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseDown={(e) => e.preventDefault()} // evita blur del input
                     onClick={() => addToken(name)}
                   >
                     {name}
                   </button>
                 ))}
-                <div className="sugg-foot">
-                  {suggestions.length} listado{suggestions.length === 1 ? '' : 's'}
-                </div>
+                <div className="sugg-foot">{suggestions.length} listado{suggestions.length > 1 ? 's' : ''}</div>
               </div>
             )}
-          </div>
 
-          <div className="toolbar-group">
-            <label className="toolbar-label" htmlFor="categoria">Categoría</label>
-            <select
-              id="categoria"
-              className="toolbar-select"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c === 'todas' ? 'Todas' : c}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="toolbar-group">
-            <label className="toolbar-label" htmlFor="ordenar">Ordenar</label>
-            <select
-              id="ordenar"
-              className="toolbar-select"
-              value={order}
-              onChange={(e) => setOrder(e.target.value)}
-            >
-              {ORDER_OPTIONS.map((o) => (
-                <option key={o.id} value={o.id}>{o.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* === Chips en la segunda fila del GRID (solo col 1) === */}
-          {tokens.length > 0 && (
-            <div className="chips-grid-slot">
-              <div className="toolbar-chips" role="list">
+            {/* Chips SELECCIONADOS (debajo de Buscar, en el mismo grid) */}
+            {tokens.length > 0 && (
+              <div className="toolbar-chips chips-grid-slot" role="list" style={{ marginTop: 8 }}>
                 {tokens.map((t) => (
                   <span key={t} className="chip chip-active" role="listitem" title={t}>
                     {t}
@@ -321,13 +313,45 @@ export default function Productos() {
                   Limpiar búsqueda
                 </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Categoría */}
+          <div className="toolbar-group">
+            <label className="toolbar-label" htmlFor="categoria">Categoría</label>
+            <select
+              id="categoria"
+              className="toolbar-select"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c === 'todas' ? 'Todas' : c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Ordenar */}
+          <div className="toolbar-group">
+            <label className="toolbar-label" htmlFor="ordenar">Ordenar</label>
+            <select
+              id="ordenar"
+              className="toolbar-select"
+              value={order}
+              onChange={(e) => setOrder(e.target.value)}
+            >
+              {ORDER_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Fila de acciones */}
-        <div className="toolbar-row actions-row">
-          {/* Tiendas: permanece abierto al seleccionar varias */}
+        <div className="toolbar-row" style={{ marginTop: 6 }}>
+          {/* Tiendas (permanece abierto al seleccionar varias) */}
           <div className="toolbar__export" ref={storesRef}>
             <button
               type="button"
@@ -358,7 +382,7 @@ export default function Productos() {
                     type="button"
                     className="store-pill"
                     aria-pressed={on}
-                    onClick={() => toggleStore(slug)}
+                    onClick={() => toggleStore(slug)} // no cerramos
                     title={on ? `Ocultar ${label}` : `Mostrar ${label}`}
                   >
                     <span className={`dot ${on ? 'on' : ''}`} /> {label}
@@ -457,7 +481,7 @@ export default function Productos() {
         </div>
 
         {/* contador */}
-        <div className="toolbar-row" style={{ margin-bottom: 0 }}>
+        <div className="toolbar-row" style={{ marginBottom: 0 }}>
           <span className="muted">
             {filteredSorted.length} producto{filteredSorted.length === 1 ? '' : 's'} encontrados
           </span>
@@ -468,9 +492,15 @@ export default function Productos() {
       {err && <p style={{ color: 'red', marginTop: 8 }}>Error al cargar datos: {err}</p>}
 
       {/* ===== Tabla ===== */}
-      <div className="table-wrapper">
-        <div className="scroll-indicator left">‹</div>
-        <div className="scroll-indicator right">›</div>
+      <div
+        className="table-wrapper"
+        ref={twRef}
+        onScroll={updateScrollHints}
+        style={{ marginTop: 10 }}
+      >
+        {/* Indicadores de scroll (fuera del cuadro) */}
+        {showL && <div className="scroll-indicator left">‹</div>}
+        {showR && <div className="scroll-indicator right">›</div>}
 
         <table>
           <thead>
@@ -560,7 +590,7 @@ function downloadCSV(items, stores) {
 }
 
 function downloadExcelLikeCSV(items, stores) {
-  downloadCSV(items, stores);
+  downloadCSV(items, stores); // simple: mismo CSV sirve para Excel
 }
 
 function csvCell(v) {

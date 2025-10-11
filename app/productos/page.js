@@ -236,33 +236,36 @@ export default function Productos() {
           {/* ancla del dropdown */}
           <div className="toolbar-group search-group" style={{ flex: 1, minWidth: 260 }}>
             <label className="toolbar-label" htmlFor="buscar">Buscar</label>
-            <input
-              id="buscar"
-              className="toolbar-input"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Ej: arroz, aceite, papel, sal…"
-              autoComplete="off"
-            />
-            {/* Sugerencias superpuestas (queda SIEMPRE bajo el input) */}
-            {q && suggestions.length > 0 && (
-              <div className="sugg-panel">
-                {suggestions.map((name) => (
-                  <button
-                    key={name}
-                    type="button"
-                    className="sugg-item"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => addToken(name)}
-                  >
-                    {name}
-                  </button>
-                ))}
-                <div className="sugg-foot">{suggestions.length} listado</div>
-              </div>
-            )}
 
-            {/* 🔹 CHIPS SIEMPRE BAJO BUSCAR (móvil y desktop) */}
+            {/* 🔹 ANCLA NUEVA: el dropdown queda pegado al input, no al grupo */}
+            <div className="sugg-anchor">
+              <input
+                id="buscar"
+                className="toolbar-input"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Ej: arroz, aceite, papel, sal…"
+                autoComplete="off"
+              />
+              {q && suggestions.length > 0 && (
+                <div className="sugg-panel">
+                  {suggestions.map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      className="sugg-item"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => addToken(name)}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                  <div className="sugg-foot">{suggestions.length} listado</div>
+                </div>
+              )}
+            </div>
+
+            {/* 🔹 CHIPS SIEMPRE BAJO BUSCAR */}
             {tokens.length > 0 && (
               <div className="chips-inline">
                 <div className="toolbar-chips" role="list">

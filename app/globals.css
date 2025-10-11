@@ -137,7 +137,7 @@ strong { color: #111827; }
 }
 .toolbar-row {
   display: flex;
-  align-items: flex-start;   /* asegura alineación alta, útil para chips */
+  align-items: flex-start;
   gap: 14px;
   flex-wrap: wrap;
   margin-bottom: 8px;
@@ -171,7 +171,6 @@ strong { color: #111827; }
    ========================================================= */
 .sugg-panel {
   position: absolute;
-  /* SIEMPRE bajo el input, independientemente de los chips */
   top: calc(100% + 4px);
   left: 0;
   right: 0;
@@ -180,7 +179,7 @@ strong { color: #111827; }
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0,0,0,.12);
   padding: 8px;
-  z-index: 999;           /* por sobre chips / selects */
+  z-index: 999;
   max-height: 280px;
   overflow-y: auto;
 }
@@ -196,31 +195,39 @@ strong { color: #111827; }
 .sugg-foot { margin-top: 6px; font-size: .85rem; color: #6B7280; text-align: center; }
 
 /* =========================================================
-   CHIPS / PRODUCTOS SELECCIONADOS (más pequeños y horizontales)
+   CHIPS / PRODUCTOS SELECCIONADOS
    ========================================================= */
-.chips-row { align-items: center; }
 .toolbar-chips {
   display: flex;
   flex: 1;
   gap: 8px;
-  flex-wrap: wrap;              /* ocupa en horizontal y salta si no cabe */
+  flex-wrap: wrap;
   min-width: 260px;
 }
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;            /* ~50% más pequeño */
+  padding: 6px 10px;
   border-radius: 9999px;
   border: 1px solid #d1d5db;
   background: #fff;
   color: #1E40AF;
   font-weight: 600;
-  font-size: .85rem;            /* más pequeño */
+  font-size: .85rem;
   line-height: 1;
 }
 .chip-active { background: #1E3A8A; color: #fff; border-color: #1E3A8A; }
 .chip-x { border: none; background: transparent; color: #fff; font-size: .95rem; cursor: pointer; }
+
+/* 🔹 contenedor de chips pegado al buscador (se usa dentro del .search-group) */
+.chips-inline{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-top:6px;
+  flex-wrap:wrap;
+}
 
 /* =========================================================
    BOTONES / POPOVERS

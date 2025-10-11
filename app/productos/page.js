@@ -237,9 +237,9 @@ export default function Productos() {
 
       {/* ===== Toolbar ===== */}
       <section className="toolbar">
-        {/* Buscar + sugerencias + chips (UN SOLO BLOQUE) */}
-        <div className="toolbar-row" ref={searchWrapRef} style={{ position: 'relative' }}>
-          <div className="toolbar-group search-group" style={{ flex: 1, minWidth: 260 }}>
+        {/* Fila superior como GRID (Buscar | Categoría | Ordenar) */}
+        <div className="toolbar-row toolbar-grid" ref={searchWrapRef}>
+          <div className="toolbar-group search-group">
             <label className="toolbar-label" htmlFor="buscar">Buscar</label>
             <input
               id="buscar"
@@ -249,8 +249,7 @@ export default function Productos() {
               placeholder="Ej: arroz, aceite, papel, sal…"
               autoComplete="off"
             />
-
-            {/* Sugerencias superpuestas ancladas al buscador */}
+            {/* Sugerencias ancladas al input */}
             {q && suggestions.length > 0 && (
               <div className="sugg-panel">
                 {suggestions.map((name) => (
@@ -269,9 +268,41 @@ export default function Productos() {
                 </div>
               </div>
             )}
+          </div>
 
-            {/* Chips SIEMPRE debajo del buscador */}
-            {tokens.length > 0 && (
+          <div className="toolbar-group">
+            <label className="toolbar-label" htmlFor="categoria">Categoría</label>
+            <select
+              id="categoria"
+              className="toolbar-select"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c === 'todas' ? 'Todas' : c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="toolbar-group">
+            <label className="toolbar-label" htmlFor="ordenar">Ordenar</label>
+            <select
+              id="ordenar"
+              className="toolbar-select"
+              value={order}
+              onChange={(e) => setOrder(e.target.value)}
+            >
+              {ORDER_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* === Chips en la segunda fila del GRID (solo col 1) === */}
+          {tokens.length > 0 && (
+            <div className="chips-grid-slot">
               <div className="toolbar-chips" role="list">
                 {tokens.map((t) => (
                   <span key={t} className="chip chip-active" role="listitem" title={t}>
@@ -290,38 +321,8 @@ export default function Productos() {
                   Limpiar búsqueda
                 </button>
               </div>
-            )}
-          </div>
-
-          <div className="toolbar-group" style={{ minWidth: 220 }}>
-            <label className="toolbar-label" htmlFor="categoria">Categoría</label>
-            <select
-              id="categoria"
-              className="toolbar-select"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c === 'todas' ? 'Todas' : c}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="toolbar-group" style={{ minWidth: 220 }}>
-            <label className="toolbar-label" htmlFor="ordenar">Ordenar</label>
-            <select
-              id="ordenar"
-              className="toolbar-select"
-              value={order}
-              onChange={(e) => setOrder(e.target.value)}
-            >
-              {ORDER_OPTIONS.map((o) => (
-                <option key={o.id} value={o.id}>{o.label}</option>
-              ))}
-            </select>
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Fila de acciones */}
@@ -456,7 +457,7 @@ export default function Productos() {
         </div>
 
         {/* contador */}
-        <div className="toolbar-row" style={{ marginBottom: 0 }}>
+        <div className="toolbar-row" style={{ margin-bottom: 0 }}>
           <span className="muted">
             {filteredSorted.length} producto{filteredSorted.length === 1 ? '' : 's'} encontrados
           </span>

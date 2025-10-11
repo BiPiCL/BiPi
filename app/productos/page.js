@@ -29,12 +29,7 @@ export default function Productos() {
   const supabase = useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-    // Evita excepciones si faltan variables
-    try {
-      return createClient(url, key);
-    } catch {
-      return null;
-    }
+    try { return createClient(url, key); } catch { return null; }
   }, []);
 
   /* ===== Datos ===== */
@@ -44,17 +39,13 @@ export default function Productos() {
 
   useEffect(() => {
     let cancelled = false;
-
     (async () => {
       try {
-        if (!supabase) {
-          throw new Error('Faltan claves de Supabase (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY).');
-        }
+        if (!supabase) throw new Error('Faltan claves de Supabase.');
         const { data, error } = await supabase
           .from('product_price_matrix')
           .select('product_id, producto, categoria, formato, tienda_slug, tienda, precio_clp')
           .order('producto', { ascending: true });
-
         if (error) throw error;
         if (!cancelled) setRows(data ?? []);
       } catch (e) {
@@ -63,10 +54,7 @@ export default function Productos() {
         if (!cancelled) setLoading(false);
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [supabase]);
 
   /* ===== Estado filtros ===== */
@@ -84,9 +72,7 @@ export default function Productos() {
 
   /* ===== Leer parámetros desde URL (para compartir búsquedas) ===== */
   useEffect(() => {
-    // Asegura entorno navegador
     if (typeof window === 'undefined') return;
-
     try {
       const url = new URL(window.location.href);
       const tokensStr = url.searchParams.get('tokens');
@@ -101,9 +87,7 @@ export default function Productos() {
         const set = storesStr.split(',').reduce((acc, s) => ({ ...acc, [s]: true }), {});
         setActiveStores({ lider: false, jumbo: false, unimarc: false, 'santa-isabel': false, ...set });
       }
-    } catch {
-      // Si algo falla con la URL, seguimos con defaults
-    }
+    } catch {}
   }, []);
 
   /* ===== Menús desplegables ===== */
@@ -144,9 +128,7 @@ export default function Productos() {
     const map = {};
     rows.forEach((r) => {
       const key = r.producto;
-      if (!map[key]) {
-        map[key] = { categoria: r.categoria, formato: r.formato, precios: {} };
-      }
+      if (!map[key]) map[key] = { categoria: r.categoria, formato: r.formato, precios: {} };
       map[key].precios[r.tienda_slug] = r.precio_clp;
     });
     return map;
@@ -166,10 +148,7 @@ export default function Productos() {
     return out;
   }, [productos, qn, tokens]);
 
-  const addToken = (name) => {
-    setTokens((t) => (t.includes(name) ? t : [...t, name]));
-    setQ('');
-  };
+  const addToken = (name) => { setTokens((t) => (t.includes(name) ? t : [...t, name])); setQ(''); };
   const removeToken = (name) => setTokens((t) => t.filter((x) => x !== name));
   const clearSearch = () => { setQ(''); setTokens([]); };
 
@@ -201,9 +180,7 @@ export default function Productos() {
       });
     }
 
-    if (category !== 'todas') {
-      list = list.filter(([, info]) => info.categoria === category);
-    }
+    if (category !== 'todas') list = list.filter(([, info]) => info.categoria === category);
 
     if (order === 'name-asc' || order === 'name-desc') {
       list.sort(([a], [b]) => (order === 'name-asc' ? a.localeCompare(b) : b.localeCompare(a)));
@@ -223,7 +200,7 @@ export default function Productos() {
   function cheapestVisible(precios, stores) {
     const vals = stores.map((s) => precios[s]).filter((v) => v != null);
     return vals.length ? Math.min(...vals) : null;
-    }
+  }
 
   const clearAll = () => {
     setQ('');
@@ -236,10 +213,7 @@ export default function Productos() {
 
   /* ===== Compartir búsqueda ===== */
   const [toast, setToast] = useState('');
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 2200);
-  };
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2200); };
 
   const copySearchLink = async () => {
     if (typeof window === 'undefined') return;
@@ -267,9 +241,7 @@ export default function Productos() {
         document.execCommand('copy');
         ta.remove();
         showToast('Se ha copiado el link de búsqueda');
-      } catch {
-        showToast('No se pudo copiar');
-      }
+      } catch { showToast('No se pudo copiar'); }
     }
   };
 
@@ -286,10 +258,11 @@ export default function Productos() {
       <section className="toolbar">
         {/* Fila superior: Buscar / Categoría / Ordenar */}
         <div className="toolbar-row">
-          <div className="toolbar-group search-group" style={{ flex: 1, minWidth: 260 }}>
+          {/* === BUSCAR: input + dropdown dentro de .search-group (relative) === */}
+          <div className="toolbar-group" style={{ flex: 1, minWidth: 260 }}>
             <label className="toolbar-label" htmlFor="buscar">Buscar</label>
 
-            <div className="sugg-anchor">
+            <div className="search-group">
               <input
                 id="buscar"
                 className="toolbar-input"
@@ -315,33 +288,9 @@ export default function Productos() {
                 </div>
               )}
             </div>
-
-            {/* chips debajo del buscador */}
-            {tokens.length > 0 && (
-              <div className="chips-inline">
-                <div className="toolbar-chips" role="list">
-                  {tokens.map((t) => (
-                    <span key={t} className="chip chip-active" role="listitem" title={t}>
-                      {t}
-                      <button
-                        type="button"
-                        className="chip-x"
-                        aria-label={`Eliminar ${t}`}
-                        onClick={() => removeToken(t)}
-                        style={{ marginLeft: 6 }}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <button type="button" className="btn btn-ghost" onClick={clearSearch}>
-                  Limpiar búsqueda
-                </button>
-              </div>
-            )}
           </div>
 
+          {/* === Categoría === */}
           <div className="toolbar-group" style={{ minWidth: 220 }}>
             <label className="toolbar-label" htmlFor="categoria">Categoría</label>
             <select
@@ -358,6 +307,7 @@ export default function Productos() {
             </select>
           </div>
 
+          {/* === Ordenar === */}
           <div className="toolbar-group" style={{ minWidth: 220 }}>
             <label className="toolbar-label" htmlFor="ordenar">Ordenar</label>
             <select
@@ -373,8 +323,34 @@ export default function Productos() {
           </div>
         </div>
 
-        {/* Acciones */}
+        {/* === Fila de chips + botón limpiar (FUERA de .search-group) === */}
+        {tokens.length > 0 && (
+          <div className="toolbar-row chips-row">
+            <div className="toolbar-chips" role="list">
+              {tokens.map((t) => (
+                <span key={t} className="chip chip-active" role="listitem" title={t}>
+                  {t}
+                  <button
+                    type="button"
+                    className="chip-x"
+                    aria-label={`Eliminar ${t}`}
+                    onClick={() => removeToken(t)}
+                    style={{ marginLeft: 6 }}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <button type="button" className="btn btn-ghost" onClick={clearSearch}>
+              Limpiar búsqueda
+            </button>
+          </div>
+        )}
+
+        {/* === Acciones === */}
         <div className="toolbar-row actions-row">
+          {/* Tiendas */}
           <div className="toolbar__export" ref={storesRef}>
             <button
               type="button"
@@ -415,6 +391,7 @@ export default function Productos() {
             </div>
           </div>
 
+          {/* Filas por página */}
           <div className="toolbar__export" ref={rowsRef}>
             <button
               type="button"
@@ -431,10 +408,7 @@ export default function Productos() {
                   key={n}
                   type="button"
                   className="menu-item"
-                  onClick={() => {
-                    setRowsPerPage(n);
-                    setOpenRows(false);
-                  }}
+                  onClick={() => { setRowsPerPage(n); setOpenRows(false); }}
                 >
                   {n}
                 </button>
@@ -442,6 +416,7 @@ export default function Productos() {
             </div>
           </div>
 
+          {/* Exportar */}
           <div className="toolbar__export" ref={exportRef}>
             <button
               type="button"
@@ -461,9 +436,7 @@ export default function Productos() {
                     const txt = tableToTSV(pageItems, visibleStores);
                     await navigator.clipboard.writeText(txt);
                     showToast('Tabla copiada');
-                  } catch {
-                    showToast('No se pudo copiar');
-                  }
+                  } catch { showToast('No se pudo copiar'); }
                   setOpenExport(false);
                 }}
               >
@@ -472,20 +445,14 @@ export default function Productos() {
               <button
                 type="button"
                 className="menu-item"
-                onClick={() => {
-                  downloadCSV(pageItems, visibleStores);
-                  setOpenExport(false);
-                }}
+                onClick={() => { downloadCSV(pageItems, visibleStores); setOpenExport(false); }}
               >
                 CSV
               </button>
               <button
                 type="button"
                 className="menu-item"
-                onClick={() => {
-                  downloadExcelLikeCSV(pageItems, visibleStores);
-                  setOpenExport(false);
-                }}
+                onClick={() => { downloadExcelLikeCSV(pageItems, visibleStores); setOpenExport(false); }}
               >
                 Excel
               </button>
@@ -510,11 +477,7 @@ export default function Productos() {
       </section>
 
       {/* error */}
-      {err && (
-        <p style={{ color: 'red', marginTop: 8 }}>
-          Error al cargar datos: {err}
-        </p>
-      )}
+      {err && <p style={{ color: 'red', marginTop: 8 }}>Error al cargar datos: {err}</p>}
 
       {/* ===== Tabla ===== */}
       <div className="table-wrapper">

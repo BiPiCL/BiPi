@@ -145,6 +145,9 @@ strong { color: #111827; }
 .toolbar-group { display: flex; flex-direction: column; gap: 6px; min-width: 220px; }
 .toolbar-label { font-size: .9rem; color: #1E40AF; font-weight: 700; }
 
+/* 🔹 NUEVO: ancla del dropdown de sugerencias */
+.search-group { position: relative; }
+
 /* Input y select */
 .toolbar-input,
 .toolbar-select {
@@ -196,7 +199,7 @@ strong { color: #111827; }
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  flex: 1;            /* <- NUEVO: ocupa todo el ancho disponible */
+  flex: 1;
 }
 .chip {
   padding: 8px 12px;

@@ -1,5 +1,5 @@
 /* =========================================================
-   BiPi Chile — Estilos Globales (versión final + HERO)
+   BiPi Chile — Estilos Globales (versión centrada del Hero)
    ========================================================= */
 
 /* === Reset global === */
@@ -41,49 +41,47 @@ strong { color: #111827; }
 .nav-links a { color: #1f2937; font-weight: 600; text-decoration: none; }
 .nav-links a:hover { color: #2563EB; text-decoration: underline; }
 
-@media (max-width: 640px) {
-  .nav-flex { gap: 12px; }
-  .brand-name { font-size: 1.05rem; }
-  .nav-links a { font-size: 0.95rem; }
-}
-
 /* =========================================================
-   HOME / INICIO (título + lead)
+   HOME / INICIO
    ========================================================= */
 .page-title {
   font-size: clamp(1.8rem, 3.5vw, 2.2rem);
   font-weight: 800;
   color: #1E3A8A;
-  text-align: left;
+  text-align: center; /* centrado */
   margin: 28px 0 14px;
 }
 .lead {
   max-width: 760px;
-  margin: 0 0 22px 0;
+  margin: 0 auto 22px auto; /* centrado */
   color: #374151;
+  text-align: center;
 }
 
 /* =========================================================
-   HERO / BANNER (Azul con botón amarillo) — RESTAURADO
+   HERO / BANNER AZUL — CENTRADO
    ========================================================= */
 .hero {
   background: linear-gradient(135deg, #1E3A8A, #2563EB);
   color: #fff;
   border-radius: 18px;
   padding: 42px 20px;
-  margin: 10px 0 34px 0;
+  margin: 10px auto 34px auto;
   box-shadow: 0 10px 25px rgba(30, 64, 175, .25);
   opacity: 0;
   transform: translateY(24px);
   animation: fadeInUp 0.9s ease forwards;
+  text-align: center; /* centra todo el contenido */
 }
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(24px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
 .hero-center {
-  text-align: left;
+  text-align: center; /* centrado */
   max-width: 760px;
+  margin: 0 auto;
 }
 .hero-badge {
   background: rgba(255, 255, 255, .18);
@@ -95,7 +93,7 @@ strong { color: #111827; }
   border-radius: 9999px;
   font-weight: 700;
   box-shadow: 0 2px 8px rgba(255, 255, 255, .15);
-  margin: 0 0 12px 0;
+  margin: 0 auto 12px auto;
   width: max-content;
 }
 .hero-cart { font-size: 1.4rem; }
@@ -105,6 +103,7 @@ strong { color: #111827; }
   color: #fff;
   margin: 4px 0 8px 0;
   font-size: clamp(1.5rem, 4.2vw, 2.2rem);
+  text-align: center;
 }
 .hero-title .hero-money {
   font-size: 1.6rem;
@@ -114,9 +113,9 @@ strong { color: #111827; }
 .hero-text {
   color: #fff;
   opacity: .95;
-  margin: 10px 0 22px 0;
+  margin: 10px auto 22px auto;
   max-width: 680px;
-  text-align: justify;
+  text-align: center;
   font-size: clamp(1rem, 2.6vw, 1.1rem);
 }
 .hero-btn {
@@ -130,6 +129,7 @@ strong { color: #111827; }
   text-decoration: none;
   box-shadow: 0 3px 8px rgba(0, 0, 0, .25);
   transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+  margin: 0 auto; /* centrado */
 }
 .hero-btn:hover { background: #eab308; transform: translateY(-1px) scale(1.04); }
 @media (max-width: 420px) {
@@ -160,8 +160,7 @@ strong { color: #111827; }
   margin-bottom: 8px;
 }
 
-/* NUEVO: grid para mantener “Categoría” y “Ordenar” fijos en desktop,
-   aunque aparezcan chips/sugerencias bajo “Buscar” */
+/* grid desktop */
 .toolbar-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -174,8 +173,6 @@ strong { color: #111827; }
 
 .toolbar-group { display: flex; flex-direction: column; gap: 6px; min-width: 220px; }
 .toolbar-label { font-size: .9rem; color: #1E40AF; font-weight: 700; }
-
-/* Grupo de búsqueda debe ser relativo para anclar las sugerencias */
 .search-group { position: relative; }
 
 /* Inputs y Selects */
@@ -202,7 +199,7 @@ strong { color: #111827; }
    ========================================================= */
 .sugg-panel {
   position: absolute;
-  top: calc(100% + 4px);        /* pegado al input */
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
   background: #fff;
@@ -226,20 +223,13 @@ strong { color: #111827; }
   cursor: pointer;
 }
 .sugg-item:hover { background: #F3F4F6; }
-.sugg-foot {
-  margin-top: 6px;
-  font-size: .85rem;
-  color: #6B7280;
-  text-align: center;
-}
+.sugg-foot { margin-top: 6px; font-size: .85rem; color: #6B7280; text-align: center; }
 
 /* =========================================================
    CHIPS / PRODUCTOS SELECCIONADOS
    ========================================================= */
-.toolbar-chips {
-  display: flex; flex-wrap: wrap; gap: 8px;
-}
-.chips-grid-slot { grid-column: 1 / 2; } /* chips permanecen bajo “Buscar” en desktop */
+.toolbar-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips-grid-slot { grid-column: 1 / 2; }
 .chip {
   padding: 8px 12px;
   border-radius: 9999px;
@@ -249,15 +239,8 @@ strong { color: #111827; }
   font-weight: 600;
   font-size: .9rem;
 }
-.chip-active {
-  background: #1E3A8A;
-  color: #fff;
-  border-color: #1E3A8A;
-}
-.chip-x {
-  border: none; background: transparent; color: #fff;
-  font-size: 1rem; cursor: pointer; margin-left: 8px;
-}
+.chip-active { background: #1E3A8A; color: #fff; border-color: #1E3A8A; }
+.chip-x { border: none; background: transparent; color: #fff; font-size: 1rem; cursor: pointer; margin-left: 8px; }
 
 /* =========================================================
    BOTONES / POPOVERS
@@ -269,29 +252,17 @@ strong { color: #111827; }
   padding: 8px 12px;
   font-weight: 700;
   cursor: pointer;
-  line-height: 1;
   transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
 }
 .btn-sm { padding: 8px 12px; font-size: .9rem; }
 
-.btn-secondary {
-  background: #fff;
-  color: #1E40AF;
-  border: 1px solid #d1d5db;
-}
-.btn-secondary:hover {
-  border-color: #2563EB;
-  color: #2563EB;
-  background: #f9fafb;
-  transform: translateY(-1px);
-}
-.btn-ghost {
-  background: #F3F4F6; color: #1E40AF; border: 1px solid #E5E7EB;
-}
+.btn-secondary { background: #fff; color: #1E40AF; border: 1px solid #d1d5db; }
+.btn-secondary:hover { border-color: #2563EB; color: #2563EB; background: #f9fafb; transform: translateY(-1px); }
+.btn-ghost { background: #F3F4F6; color: #1E40AF; border: 1px solid #E5E7EB; }
 .btn-ghost:hover { background: #e9eaec; border-color: #2563EB; color: #2563EB; }
 
-/* Popover menú (exportar, tiendas, etc.) */
+/* Popovers */
 .toolbar__export { position: relative; display: inline-flex; }
 .export-menu {
   position: absolute;
@@ -305,11 +276,9 @@ strong { color: #111827; }
   min-width: 210px;
   display: none;
   z-index: 40;
-  white-space: nowrap;
 }
 .export-menu.show { display: flex; flex-direction: column; gap: 8px; }
 
-/* Pills de tiendas */
 .store-pill {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 10px 12px; border-radius: 9999px;
@@ -321,14 +290,14 @@ strong { color: #111827; }
 .dot.on { background: #1E3A8A; }
 
 /* =========================================================
-   TABLA DE RESULTADOS
+   TABLA
    ========================================================= */
 .table-wrapper {
   position: relative;
   overflow-x: auto;
   margin-top: 10px;
   scroll-behavior: smooth;
-  padding: 0 8px; /* deja un pequeño margen interior para no tocar los bordes */
+  padding: 0 8px;
 }
 .table-wrapper::before,
 .table-wrapper::after {
@@ -343,7 +312,6 @@ strong { color: #111827; }
 .table-wrapper::before { left: 0;  background: linear-gradient(to right, #F9FAFB 40%, transparent); }
 .table-wrapper::after  { right: 0; background: linear-gradient(to left,  #F9FAFB 40%, transparent); }
 
-/* Flechas indicativas — fuera del cuadro */
 .scroll-indicator {
   position: absolute;
   top: 45%;
@@ -357,14 +325,12 @@ strong { color: #111827; }
   box-shadow: 0 2px 8px rgba(0,0,0,.15);
   z-index: 20;
 }
-.scroll-indicator.left  { left: -14px; }   /* fuera del wrapper */
-.scroll-indicator.right { right: -14px; }  /* fuera del wrapper */
+.scroll-indicator.left  { left: -14px; }
+.scroll-indicator.right { right: -14px; }
 
 table { border-collapse: collapse; width: 100%; min-width: 600px; }
 th, td { border-bottom: 1px solid #E5E7EB; padding: 10px 12px; text-align: left; }
-th {
-  font-weight: 800; color: #111827; background: #F3F4F6; white-space: nowrap;
-}
+th { font-weight: 800; color: #111827; background: #F3F4F6; white-space: nowrap; }
 td { color: #111827; font-weight: 500; }
 td strong { font-weight: 800; }
 

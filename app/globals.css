@@ -82,7 +82,7 @@ strong { color: #111827; }
    ========================================================= */
 .sugg-panel {
   position: absolute;
-  top: calc(100% + 4px); /* justo debajo del input */
+  top: calc(100% + 6px);               /* justo debajo del input */
   left: 0;
   right: 0;
   background: #fff;
@@ -91,8 +91,9 @@ strong { color: #111827; }
   box-shadow: 0 10px 30px rgba(0,0,0,.08);
   padding: 8px;
   z-index: 99;
-  max-height: 280px;
+  max-height: min(40vh, 320px);        /* para que no se esconda tras el teclado */
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .sugg-item {
   width: 100%;
@@ -106,11 +107,15 @@ strong { color: #111827; }
   cursor: pointer;
 }
 .sugg-item:hover { background: #F3F4F6; }
+.suggest-meta {
+  margin-top: 6px; font-size: .82rem; color: #6B7280; text-align: right;
+}
 
 /* =========================================================
    CHIPS / PRODUCTOS SELECCIONADOS
    ========================================================= */
-.toolbar-chips {
+.toolbar-chips,
+.selected-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -124,6 +129,8 @@ strong { color: #111827; }
   color: #1E40AF;
   font-weight: 600;
   font-size: .9rem;
+  display: inline-flex;
+  align-items: center;
 }
 .chip-active {
   background: #1E3A8A;
@@ -133,7 +140,7 @@ strong { color: #111827; }
 .chip-x {
   border: none;
   background: transparent;
-  color: #fff;
+  color: inherit;
   font-size: 1rem;
   cursor: pointer;
   margin-left: 8px;
@@ -189,7 +196,7 @@ strong { color: #111827; }
   padding: 10px;
   min-width: 210px;
   display: none;
-  z-index: 40;
+  z-index: 60;
 }
 .export-menu.show {
   display: flex;
@@ -198,14 +205,10 @@ strong { color: #111827; }
 }
 
 /* =========================================================
-   TABLA DE RESULTADOS
+   TABLA DE RESULTADOS + FLECHAS
    ========================================================= */
-.table-wrapper {
-  position: relative;
-  overflow-x: auto;
-  margin-top: 10px;
-  scroll-behavior: smooth;
-}
+/* (Compatibilidad con tu nombre anterior) */
+.table-wrapper { position: relative; overflow-x: auto; margin-top: 10px; scroll-behavior: smooth; }
 .table-wrapper::before,
 .table-wrapper::after {
   content: '';
@@ -216,19 +219,16 @@ strong { color: #111827; }
   pointer-events: none;
   z-index: 10;
 }
-.table-wrapper::before {
-  left: 0;
-  background: linear-gradient(to right, #F9FAFB 40%, transparent);
-}
-.table-wrapper::after {
-  right: 0;
-  background: linear-gradient(to left, #F9FAFB 40%, transparent);
-}
+.table-wrapper::before { left: 0; background: linear-gradient(to right, #F9FAFB 40%, transparent); }
+.table-wrapper::after  { right: 0; background: linear-gradient(to left,  #F9FAFB 40%, transparent); }
 
-/* Flechas indicativas */
-.scroll-indicator {
+/* (Clases nuevas usadas por page.js) */
+.table-scroll-wrap { position: relative; }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.scroll-arrows { pointer-events: none; }
+.arrow {
   position: absolute;
-  top: 45%;
+  top: 44%;
   transform: translateY(-50%);
   font-size: 22px;
   font-weight: 800;
@@ -240,8 +240,9 @@ strong { color: #111827; }
   box-shadow: 0 2px 8px rgba(0,0,0,.15);
   z-index: 20;
 }
-.scroll-indicator.left { left: 6px; }
-.scroll-indicator.right { right: 6px; }
+.arrow.hide { display: none; }
+.arrow:first-child { left: 6px; }
+.arrow:last-child  { right: 6px; }
 
 table { border-collapse: collapse; width: 100%; min-width: 600px; }
 th, td {
@@ -293,4 +294,14 @@ td strong { font-weight: 800; }
   0% { opacity: 0; transform: translate(-50%, 20px); }
   10%,90% { opacity: 1; transform: translate(-50%, 0); }
   100% { opacity: 0; transform: translate(-50%, 20px); }
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+@media (max-width: 640px) {
+  .toolbar-group { min-width: 200px; }
+  .sugg-panel { max-height: min(50vh, 360px); } /* un poquito más alta en móvil */
+  /* Evita que las flechas tapen celdas muy estrechas */
+  .arrow { width: 26px; height: 26px; font-size: 20px; }
 }

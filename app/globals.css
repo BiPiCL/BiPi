@@ -171,14 +171,14 @@ strong { color: #111827; }
    ========================================================= */
 .sugg-panel {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);   /* ⬅️ fijo bajo el input (mejora: +2px) */
   left: 0; right: 0;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0,0,0,.12);
   padding: 8px;
-  z-index: 2000;               /* ⬆️ más alto que chips y controles */
+  z-index: 2000;           /* ⬆️ más alto que chips y controles */
   max-height: 280px;
   overflow-y: auto;
 }
@@ -225,13 +225,14 @@ strong { color: #111827; }
 /* 🔵 Desktop: chips en horizontal debajo de “Buscar” */
 @media (min-width: 1024px) {
   .toolbar-row.chips-row {
-    width: 100%;
+    width: 100%;                 /* ⬅️ ocupa todo el ancho */
     align-items: center;
     flex-wrap: wrap;
   }
   .toolbar-row.chips-row .toolbar-chips {
     flex: 1 1 auto !important;
-    min-width: 520px;
+    min-width: 0;                /* ⬅️ evita romper la línea por ancho mínimo */
+    width: 100%;                 /* ⬅️ permite ocupar todo el riel */
     display: flex !important;
     flex-direction: row !important;
     justify-content: flex-start;

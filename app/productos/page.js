@@ -239,7 +239,7 @@ export default function Productos() {
       <section className="toolbar">
         {/* Buscar + sugerencias */}
         <div className="toolbar-row" ref={searchWrapRef} style={{ position: 'relative' }}>
-          <div className="toolbar-group" style={{ flex: 1, minWidth: 260 }}>
+          <div className="toolbar-group search-group" style={{ flex: 1, minWidth: 260 }}>
             <label className="toolbar-label" htmlFor="buscar">Buscar</label>
             <input
               id="buscar"
@@ -249,7 +249,8 @@ export default function Productos() {
               placeholder="Ej: arroz, aceite, papel, sal…"
               autoComplete="off"
             />
-            {/* Sugerencias superpuestas */}
+
+            {/* Sugerencias superpuestas ANCLADAS al buscador */}
             {q && suggestions.length > 0 && (
               <div className="sugg-panel">
                 {suggestions.map((name) => (
@@ -263,7 +264,9 @@ export default function Productos() {
                     {name}
                   </button>
                 ))}
-                <div className="sugg-foot">{suggestions.length} listado{suggestions.length === 1 ? '' : 's'}</div>
+                <div className="sugg-foot">
+                  {suggestions.length} listado{suggestions.length === 1 ? '' : 's'}
+                </div>
               </div>
             )}
 
@@ -321,7 +324,7 @@ export default function Productos() {
           </div>
         </div>
 
-        {/* Chips buscados — desktop (como estaba) */}
+        {/* Chips buscados — desktop */}
         {tokens.length > 0 && (
           <div className="toolbar-row only-desktop" style={{ marginTop: 6 }}>
             <div className="toolbar-chips" role="list">
@@ -490,7 +493,6 @@ export default function Productos() {
 
       {/* ===== Tabla ===== */}
       <div className="table-wrapper">
-        {/* Indicadores fuera del cuadro (no tapan precios) */}
         <div className="scroll-indicator left">‹</div>
         <div className="scroll-indicator right">›</div>
 
@@ -571,7 +573,7 @@ function downloadCSV(items, stores) {
   const lines = [header.join(',')];
   items.forEach(([nombre, info]) => {
     const row = [csvCell(nombre), csvCell(info.formato || '—'), ...stores.map((s) => csvCell(info.precios[s] ?? ''))];
-    lines.push(row.join(',')); 
+    lines.push(row.join(','));
   });
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a');

@@ -68,17 +68,18 @@ export default function Productos() {
   const storesRef = useRef(null);
   const rowsRef = useRef(null);
   const exportRef = useRef(null);
-  const searchWrapRef = useRef(null);
+  const searchGroupRef = useRef(null);
 
-  // cerrar popovers al hacer clic fuera
+  // cerrar popovers al hacer clic fuera (y cerrar sugerencias)
   useEffect(() => {
     const handler = (e) => {
       if (storesRef.current && !storesRef.current.contains(e.target)) setOpenStores(false);
       if (rowsRef.current && !rowsRef.current.contains(e.target)) setOpenRows(false);
       if (exportRef.current && !exportRef.current.contains(e.target)) setOpenExport(false);
+      if (searchGroupRef.current && !searchGroupRef.current.contains(e.target)) setShowSuggest(false);
     };
     document.addEventListener('mousedown', handler);
-    document.addEventListener('touchstart', handler);
+    document.addEventListener('touchstart', handler, { passive: true });
     return () => {
       document.removeEventListener('mousedown', handler);
       document.removeEventListener('touchstart', handler);
@@ -106,6 +107,7 @@ export default function Productos() {
   }, [rows]);
 
   /* ===== Sugerencias de búsqueda ===== */
+  const [showSuggest, setShowSuggest] = useState(false);
   const qn = norm(q);
   const suggestions = useMemo(() => {
     if (!qn) return [];
@@ -122,6 +124,7 @@ export default function Productos() {
   const addToken = (name) => {
     setTokens((t) => (t.includes(name) ? t : [...t, name]));
     setQ('');
+    setShowSuggest(false);
   };
   const removeToken = (name) => setTokens((t) => t.filter((x) => x !== name));
   const clearSearch = () => {
@@ -129,7 +132,7 @@ export default function Productos() {
     setTokens([]);
   };
 
-  /* ===== Tiendas visibles (sin fallback; si 0, no hay columnas de tiendas) ===== */
+  /* ===== Tiendas visibles ===== */
   const visibleStores = useMemo(
     () => STORE_ORDER.filter((slug) => activeStores[slug]),
     [activeStores]
@@ -213,7 +216,6 @@ export default function Productos() {
       await navigator.clipboard.writeText(url.toString());
       showToast('Se ha copiado el link de búsqueda');
     } catch {
-      // fallback
       const ta = document.createElement('textarea');
       ta.value = url.toString();
       document.body.appendChild(ta);
@@ -231,10 +233,34 @@ export default function Productos() {
     setTimeout(() => setToast(''), 2200);
   };
 
-  /* ===== Render ===== */
   // paginación simple (client-side), sólo para recortar
   const pageItems = useMemo(() => filteredSorted.slice(0, rowsPerPage), [filteredSorted, rowsPerPage]);
 
+  /* ===== Flechas de scroll (tabla) ===== */
+  const scrollRef = useRef(null);
+  const [hint, setHint] = useState({ left: false, right: false });
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => {
+      const canScroll = el.scrollWidth > el.clientWidth;
+      if (!canScroll) return setHint({ left: false, right: false });
+      setHint({
+        left: el.scrollLeft > 6,
+        right: el.scrollLeft + el.clientWidth < el.scrollWidth - 6,
+      });
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', update);
+      ro.disconnect();
+    };
+  }, [pageItems, visibleStores]);
+
+  /* ===== Render ===== */
   return (
     <main className="container" style={{ paddingTop: 18, paddingBottom: 24 }}>
       <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>
@@ -243,21 +269,26 @@ export default function Productos() {
 
       {/* ===== Toolbar ===== */}
       <section className="toolbar">
-        {/* Buscar + sugerencias */}
-        <div className="toolbar-row" ref={searchWrapRef} style={{ position: 'relative' }}>
-          <div className="toolbar-group" style={{ flex: 1, minWidth: 260 }}>
+        {/* Buscar + sugerencias (grupo con posición relativa para dropdown) */}
+        <div className="toolbar-row">
+          <div className="toolbar-group" style={{ flex: 1, minWidth: 260, position: 'relative' }} ref={searchGroupRef}>
             <label className="toolbar-label" htmlFor="buscar">Buscar</label>
             <input
               id="buscar"
               className="toolbar-input"
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => { setQ(e.target.value); setShowSuggest(true); }}
+              onFocus={() => setShowSuggest(true)}
               placeholder="Ej: arroz, aceite, papel, sal…"
               autoComplete="off"
             />
-            {/* Sugerencias superpuestas */}
-            {q && suggestions.length > 0 && (
-              <div className="sugg-panel">
+            {/* Sugerencias superpuestas bajo el input (no empujan el layout) */}
+            {showSuggest && q && suggestions.length > 0 && (
+              <div
+                className="sugg-panel"
+                // fallback por si los estilos aún no están cargados
+                style={{ position: 'absolute', left: 0, right: 0, zIndex: 60 }}
+              >
                 {suggestions.map((name) => (
                   <button
                     key={name}
@@ -269,6 +300,30 @@ export default function Productos() {
                     {name}
                   </button>
                 ))}
+                <div className="suggest-meta">{suggestions.length} de {Object.keys(productos).length} productos</div>
+              </div>
+            )}
+
+            {/* Chips SIEMPRE bajo el buscador (móvil y desktop) */}
+            {tokens.length > 0 && (
+              <div className="selected-chips" style={{ marginTop: 10 }}>
+                {tokens.map((t) => (
+                  <span key={t} className="chip chip-active" title={t}>
+                    {t}
+                    <button
+                      type="button"
+                      className="chip-x"
+                      aria-label={`Eliminar ${t}`}
+                      onClick={() => removeToken(t)}
+                      style={{ marginLeft: 8 }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                <button type="button" className="btn btn-ghost btn-sm" onClick={clearSearch} style={{ marginLeft: 6 }}>
+                  Limpiar búsqueda
+                </button>
               </div>
             )}
           </div>
@@ -304,31 +359,6 @@ export default function Productos() {
           </div>
         </div>
 
-        {/* chips buscados + limpiar búsqueda */}
-        {tokens.length > 0 && (
-          <div className="toolbar-row" style={{ marginTop: 6 }}>
-            <div className="toolbar-chips" role="list">
-              {tokens.map((t) => (
-                <span key={t} className="chip chip-active" role="listitem" title={t}>
-                  {t}
-                  <button
-                    type="button"
-                    className="chip-x"
-                    aria-label={`Eliminar ${t}`}
-                    onClick={() => removeToken(t)}
-                    style={{ marginLeft: 8 }}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-            <button type="button" className="btn btn-ghost" onClick={clearSearch}>
-              Limpiar búsqueda
-            </button>
-          </div>
-        )}
-
         {/* Fila de acciones */}
         <div className="toolbar-row actions-row">
           {/* Tiendas (permanece abierto al seleccionar varias) */}
@@ -360,12 +390,15 @@ export default function Productos() {
                   <button
                     key={slug}
                     type="button"
-                    className="store-pill"
+                    className={`btn ${on ? 'btn-primary' : 'btn-secondary'}`}
                     aria-pressed={on}
-                    onClick={() => toggleStore(slug)} // ← NO cerramos el menú aquí
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleStore(slug); // NO cerramos el menú
+                    }}
                     title={on ? `Ocultar ${label}` : `Mostrar ${label}`}
                   >
-                    <span className={`dot ${on ? 'on' : ''}`} /> {label}
+                    {label}
                   </button>
                 );
               })}
@@ -388,7 +421,7 @@ export default function Productos() {
                 <button
                   key={n}
                   type="button"
-                  className="menu-item"
+                  className="btn btn-secondary"
                   onClick={() => {
                     setRowsPerPage(n);
                     setOpenRows(false);
@@ -414,7 +447,7 @@ export default function Productos() {
             <div className={`export-menu ${openExport ? 'show' : ''}`} role="menu">
               <button
                 type="button"
-                className="menu-item"
+                className="btn btn-secondary"
                 onClick={async () => {
                   try {
                     const txt = tableToTSV(pageItems, visibleStores);
@@ -430,7 +463,7 @@ export default function Productos() {
               </button>
               <button
                 type="button"
-                className="menu-item"
+                className="btn btn-secondary"
                 onClick={() => {
                   downloadCSV(pageItems, visibleStores);
                   setOpenExport(false);
@@ -440,7 +473,7 @@ export default function Productos() {
               </button>
               <button
                 type="button"
-                className="menu-item"
+                className="btn btn-secondary"
                 onClick={() => {
                   downloadExcelLikeCSV(pageItems, visibleStores);
                   setOpenExport(false);
@@ -471,57 +504,64 @@ export default function Productos() {
       {/* error */}
       {err && <p style={{ color: 'red', marginTop: 8 }}>Error al cargar datos: {err}</p>}
 
-      {/* ===== Tabla ===== */}
-      <div style={{ overflowX: 'auto', marginTop: 10 }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Producto</th>
-              <th>Formato</th>
-              {visibleStores.map((s) => (
-                <th key={s} style={{ textAlign: 'right', textTransform: 'capitalize' }}>
-                  {STORE_META[s]?.label ?? s}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {pageItems.length === 0 && (
-              <tr>
-                <td colSpan={2 + visibleStores.length} style={{ padding: 16, color: '#6B7280', textAlign: 'center' }}>
-                  No se encontraron productos para la búsqueda/filtros actuales.
-                </td>
-              </tr>
-            )}
+      {/* ===== Tabla con wrapper y flechas ===== */}
+      <div className="table-scroll-wrap" style={{ marginTop: 10, position: 'relative' }}>
+        <div className="scroll-arrows">
+          <span className={`arrow ${hint.left ? '' : 'hide'}`} aria-hidden>‹</span>
+          <span className={`arrow ${hint.right ? '' : 'hide'}`} aria-hidden>›</span>
+        </div>
 
-            {pageItems.map(([nombre, info]) => {
-              const min = cheapestVisible(info.precios, visibleStores);
-              return (
-                <tr key={nombre}>
-                  <td>{nombre}</td>
-                  <td>{info.formato || '—'}</td>
-                  {visibleStores.map((s) => {
-                    const val = info.precios[s];
-                    const isMin = min != null && val === min;
-                    return (
-                      <td
-                        key={s}
-                        style={{
-                          textAlign: 'right',
-                          fontWeight: isMin ? 700 : 500,
-                          background: isMin ? '#e6f7e6' : 'transparent',
-                          color: isMin ? '#006400' : '#111827',
-                        }}
-                      >
-                        {val != null ? CLP(val) : '—'}
-                      </td>
-                    );
-                  })}
+        <div className="table-scroll" ref={scrollRef} style={{ overflowX: 'auto' }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Formato</th>
+                {visibleStores.map((s) => (
+                  <th key={s} style={{ textAlign: 'right', textTransform: 'capitalize' }}>
+                    {STORE_META[s]?.label ?? s}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.length === 0 && (
+                <tr>
+                  <td colSpan={2 + visibleStores.length} style={{ padding: 16, color: '#6B7280', textAlign: 'center' }}>
+                    No se encontraron productos para la búsqueda/filtros actuales.
+                  </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              )}
+
+              {pageItems.map(([nombre, info]) => {
+                const min = cheapestVisible(info.precios, visibleStores);
+                return (
+                  <tr key={nombre}>
+                    <td>{nombre}</td>
+                    <td>{info.formato || '—'}</td>
+                    {visibleStores.map((s) => {
+                      const val = info.precios[s];
+                      const isMin = min != null && val === min;
+                      return (
+                        <td
+                          key={s}
+                          style={{
+                            textAlign: 'right',
+                            fontWeight: isMin ? 700 : 500,
+                            background: isMin ? '#e6f7e6' : 'transparent',
+                            color: isMin ? '#006400' : '#111827',
+                          }}
+                        >
+                          {val != null ? CLP(val) : '—'}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <p className="muted" style={{ marginTop: 14 }}>

@@ -48,7 +48,7 @@ export default function Productos() {
 
   /* ===== Estado filtros ===== */
   const [q, setQ] = useState('');
-  const [tokens, setTokens] = useState([]); // productos seleccionados desde sugerencias
+  const [tokens, setTokens] = useState([]);
   const [category, setCategory] = useState('todas');
   const [order, setOrder] = useState('price-asc');
   const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -102,10 +102,10 @@ export default function Productos() {
       }
       map[key].precios[r.tienda_slug] = r.precio_clp;
     });
-    return map; // { nombre: {categoria, formato, precios} }
+    return map;
   }, [rows]);
 
-  /* ===== Sugerencias de búsqueda ===== */
+  /* ===== Sugerencias ===== */
   const qn = norm(q);
   const suggestions = useMemo(() => {
     if (!qn) return [];
@@ -219,7 +219,7 @@ export default function Productos() {
     }
   };
 
-  /* ===== Toast simple ===== */
+  /* ===== Toast ===== */
   const [toast, setToast] = useState('');
   const showToast = (msg) => {
     setToast(msg);
@@ -237,7 +237,7 @@ export default function Productos() {
 
       {/* ===== Toolbar ===== */}
       <section className="toolbar">
-        {/* Buscar + sugerencias */}
+        {/* Buscar + sugerencias + chips (UN SOLO BLOQUE) */}
         <div className="toolbar-row" ref={searchWrapRef} style={{ position: 'relative' }}>
           <div className="toolbar-group search-group" style={{ flex: 1, minWidth: 260 }}>
             <label className="toolbar-label" htmlFor="buscar">Buscar</label>
@@ -250,7 +250,7 @@ export default function Productos() {
               autoComplete="off"
             />
 
-            {/* Sugerencias superpuestas ANCLADAS al buscador */}
+            {/* Sugerencias superpuestas ancladas al buscador */}
             {q && suggestions.length > 0 && (
               <div className="sugg-panel">
                 {suggestions.map((name) => (
@@ -270,9 +270,9 @@ export default function Productos() {
               </div>
             )}
 
-            {/* Chips debajo del buscador — solo móvil */}
+            {/* Chips SIEMPRE debajo del buscador */}
             {tokens.length > 0 && (
-              <div className="toolbar-chips only-mobile" role="list">
+              <div className="toolbar-chips" role="list">
                 {tokens.map((t) => (
                   <span key={t} className="chip chip-active" role="listitem" title={t}>
                     {t}
@@ -324,34 +324,9 @@ export default function Productos() {
           </div>
         </div>
 
-        {/* Chips buscados — desktop */}
-        {tokens.length > 0 && (
-          <div className="toolbar-row only-desktop" style={{ marginTop: 6 }}>
-            <div className="toolbar-chips" role="list">
-              {tokens.map((t) => (
-                <span key={t} className="chip chip-active" role="listitem" title={t}>
-                  {t}
-                  <button
-                    type="button"
-                    className="chip-x"
-                    aria-label={`Eliminar ${t}`}
-                    onClick={() => removeToken(t)}
-                    style={{ marginLeft: 8 }}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-            <button type="button" className="btn btn-ghost" onClick={clearSearch}>
-              Limpiar búsqueda
-            </button>
-          </div>
-        )}
-
         {/* Fila de acciones */}
         <div className="toolbar-row actions-row">
-          {/* Tiendas (permanece abierto para seleccionar varias) */}
+          {/* Tiendas: permanece abierto al seleccionar varias */}
           <div className="toolbar__export" ref={storesRef}>
             <button
               type="button"

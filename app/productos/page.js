@@ -68,8 +68,8 @@ export default function Productos() {
   const storesRef = useRef(null);
   const rowsRef = useRef(null);
   const exportRef = useRef(null);
-  const searchWrapRef = useRef(null);
 
+  // cerrar popovers al hacer clic fuera
   useEffect(() => {
     const handler = (e) => {
       if (storesRef.current && !storesRef.current.contains(e.target)) setOpenStores(false);
@@ -104,7 +104,7 @@ export default function Productos() {
     return map;
   }, [rows]);
 
-  /* ===== Sugerencias ===== */
+  /* ===== Sugerencias de búsqueda ===== */
   const qn = norm(q);
   const suggestions = useMemo(() => {
     if (!qn) return [];
@@ -232,8 +232,10 @@ export default function Productos() {
       {/* ===== Toolbar ===== */}
       <section className="toolbar">
         {/* Fila superior: Buscar / Categoría / Ordenar */}
-        <div className="toolbar-row" ref={searchWrapRef} style={{ position: 'relative' }}>
-          <div className="toolbar-group" style={{ flex: 1, minWidth: 260 }}>
+        <div className="toolbar-row">
+          {/* OJO: ahora este grupo tiene clase search-group para que la .sugg-panel
+              se posicione justo bajo el buscador, también en móvil */}
+          <div className="toolbar-group search-group" style={{ flex: 1, minWidth: 260 }}>
             <label className="toolbar-label" htmlFor="buscar">Buscar</label>
             <input
               id="buscar"
@@ -293,7 +295,7 @@ export default function Productos() {
           </div>
         </div>
 
-        {/* Chips + Limpiar (los chips ahora fluyen horizontalmente) */}
+        {/* Chips + Limpiar */}
         {tokens.length > 0 && (
           <div className="toolbar-row" style={{ marginTop: 6, alignItems: 'flex-start' }}>
             <div className="toolbar-chips" role="list">
@@ -320,7 +322,7 @@ export default function Productos() {
 
         {/* Acciones */}
         <div className="toolbar-row actions-row">
-          {/* Tiendas (queda abierto para multiselección) */}
+          {/* Tiendas */}
           <div className="toolbar__export" ref={storesRef}>
             <button
               type="button"

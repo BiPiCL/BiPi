@@ -1,14 +1,23 @@
 /* =========================================================
-   BiPi Chile — Estilos Globales (versión final ajustada)
+   BiPi Chile — Estilos Globales (versión final móvil + desktop)
    ========================================================= */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   background: #F9FAFB;
   color: #111827;
   line-height: 1.6;
+}
+
+/* Helpers responsive */
+.only-mobile { display: none; }
+.only-desktop { display: block; }
+@media (max-width: 640px) {
+  .only-mobile { display: block; }
+  .only-desktop { display: none; }
 }
 
 /* === Utilidades === */
@@ -56,11 +65,10 @@ strong { color: #111827; }
   flex-wrap: wrap;
   margin-bottom: 8px;
 }
-.actions-row { align-items: stretch; }
 .toolbar-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 220px; }
 .toolbar-label { font-size: .9rem; color: #1E40AF; font-weight: 700; }
 
-/* Input y select */
+/* Inputs */
 .toolbar-input,
 .toolbar-select {
   height: 38px;
@@ -79,12 +87,11 @@ strong { color: #111827; }
 }
 
 /* =========================================================
-   AUTOCOMPLETE / SUGERENCIAS (flotante, no empuja)
+   AUTOCOMPLETE / SUGERENCIAS
    ========================================================= */
-.search-group { position: relative; }
 .sugg-panel {
   position: absolute;
-  top: calc(100% + 6px);         /* justo debajo del input */
+  top: calc(100% + 6px); /* justo debajo del input */
   left: 0;
   right: 0;
   background: #fff;
@@ -93,7 +100,7 @@ strong { color: #111827; }
   box-shadow: 0 10px 30px rgba(0,0,0,.08);
   padding: 8px;
   z-index: 99;
-  max-height: min(40vh, 320px);  /* no se pierde con teclado en móvil */
+  max-height: 280px;
   overflow-y: auto;
 }
 .sugg-item {
@@ -108,18 +115,21 @@ strong { color: #111827; }
   cursor: pointer;
 }
 .sugg-item:hover { background: #F3F4F6; }
+.sugg-foot {
+  margin-top: 6px;
+  font-size: .85rem;
+  color: #6B7280;
+  text-align: center;
+}
 
 /* =========================================================
    CHIPS / PRODUCTOS SELECCIONADOS
    ========================================================= */
-.toolbar-chips-row { align-items: center; }
-.chips-scroll {
+.toolbar-chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;              /* en móvil no “bota” el layout */
-  padding-bottom: 2px;
-  scrollbar-width: thin;
-  flex: 1;
+  margin-top: 8px;
 }
 .chip {
   padding: 8px 12px;
@@ -129,7 +139,6 @@ strong { color: #111827; }
   color: #1E40AF;
   font-weight: 600;
   font-size: .9rem;
-  white-space: nowrap;
 }
 .chip-active {
   background: #1E3A8A;
@@ -160,6 +169,7 @@ strong { color: #111827; }
   justify-content: center;
   gap: 8px;
 }
+.btn-sm { padding: 6px 10px; font-size: .9rem; }
 .btn-secondary {
   background: #fff;
   color: #1E40AF;
@@ -203,35 +213,32 @@ strong { color: #111827; }
   gap: 8px;
 }
 
-.menu-item,
+/* Botoncitos de tiendas */
 .store-pill {
-  border: none;
-  background: #F3F4F6;
-  color: #1E40AF;
-  border-radius: 9999px;
   padding: 10px 12px;
+  border-radius: 9999px;
+  border: 1px solid #E5E7EB;
+  background: #fff;
+  color: #1E40AF;
   font-weight: 700;
-  cursor: pointer;
-  text-align: left;
+  display: flex; align-items: center; gap: 8px;
 }
-.menu-item:hover,
-.store-pill:hover {
-  background: #e9eaec;
-  color: #2563EB;
+.store-pill .dot {
+  width: 8px; height: 8px; border-radius: 9999px; background: #9CA3AF;
 }
-.store-pill { display: flex; align-items: center; gap: 8px; }
-.dot { width: 9px; height: 9px; border-radius: 50%; background: #9CA3AF; }
-.dot.on { background: #16a34a; }
+.store-pill .dot.on { background: #22c55e; }
 
 /* =========================================================
-   TABLA DE RESULTADOS + indicadores de scroll
+   TABLA DE RESULTADOS
    ========================================================= */
 .table-wrapper {
   position: relative;
-  overflow-x: auto;
+  overflow-x: auto;           /* mantiene el scroll horizontal */
   margin-top: 10px;
   scroll-behavior: smooth;
 }
+
+/* Gradientes laterales (pistas) */
 .table-wrapper::before,
 .table-wrapper::after {
   content: '';
@@ -240,7 +247,7 @@ strong { color: #111827; }
   width: 32px;
   height: 100%;
   pointer-events: none;
-  z-index: 10;
+  z-index: 5;
 }
 .table-wrapper::before {
   left: 0;
@@ -251,10 +258,10 @@ strong { color: #111827; }
   background: linear-gradient(to left, #F9FAFB 40%, transparent);
 }
 
-/* Flechas indicativas */
+/* Flechas indicativas — posicionadas FUERA del cuadro de precios */
 .scroll-indicator {
   position: absolute;
-  top: 45%;
+  top: 50%;
   transform: translateY(-50%);
   font-size: 22px;
   font-weight: 800;
@@ -264,12 +271,11 @@ strong { color: #111827; }
   width: 28px; height: 28px;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 2px 8px rgba(0,0,0,.15);
-  z-index: 20;
-  user-select: none;
-  pointer-events: none; /* solo indicador */
+  z-index: 6;
+  pointer-events: none; /* no tapa la tabla */
 }
-.scroll-indicator.left { left: 6px; }
-.scroll-indicator.right { right: 6px; }
+.scroll-indicator.left  { left: 0;  transform: translate(-120%, -50%); }
+.scroll-indicator.right { right: 0; transform: translate(120%, -50%); }
 
 table { border-collapse: collapse; width: 100%; min-width: 720px; }
 th, td {

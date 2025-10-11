@@ -70,16 +70,15 @@ export default function Productos() {
   const exportRef = useRef(null);
   const searchGroupRef = useRef(null);
 
-  // cerrar popovers al hacer clic fuera (y cerrar sugerencias)
+  // cerrar popovers al hacer clic fuera
   useEffect(() => {
     const handler = (e) => {
       if (storesRef.current && !storesRef.current.contains(e.target)) setOpenStores(false);
       if (rowsRef.current && !rowsRef.current.contains(e.target)) setOpenRows(false);
       if (exportRef.current && !exportRef.current.contains(e.target)) setOpenExport(false);
-      if (searchGroupRef.current && !searchGroupRef.current.contains(e.target)) setShowSuggest(false);
     };
     document.addEventListener('mousedown', handler);
-    document.addEventListener('touchstart', handler, { passive: true });
+    document.addEventListener('touchstart', handler);
     return () => {
       document.removeEventListener('mousedown', handler);
       document.removeEventListener('touchstart', handler);
@@ -107,7 +106,6 @@ export default function Productos() {
   }, [rows]);
 
   /* ===== Sugerencias de búsqueda ===== */
-  const [showSuggest, setShowSuggest] = useState(false);
   const qn = norm(q);
   const suggestions = useMemo(() => {
     if (!qn) return [];
@@ -124,7 +122,6 @@ export default function Productos() {
   const addToken = (name) => {
     setTokens((t) => (t.includes(name) ? t : [...t, name]));
     setQ('');
-    setShowSuggest(false);
   };
   const removeToken = (name) => setTokens((t) => t.filter((x) => x !== name));
   const clearSearch = () => {
@@ -216,6 +213,7 @@ export default function Productos() {
       await navigator.clipboard.writeText(url.toString());
       showToast('Se ha copiado el link de búsqueda');
     } catch {
+      // fallback
       const ta = document.createElement('textarea');
       ta.value = url.toString();
       document.body.appendChild(ta);
@@ -233,34 +231,35 @@ export default function Productos() {
     setTimeout(() => setToast(''), 2200);
   };
 
-  // paginación simple (client-side), sólo para recortar
-  const pageItems = useMemo(() => filteredSorted.slice(0, rowsPerPage), [filteredSorted, rowsPerPage]);
+  /* ===== Indicadores de scroll en tabla ===== */
+  const wrapperRef = useRef(null);
+  const [showLeft, setShowLeft] = useState(false);
+  const [showRight, setShowRight] = useState(false);
 
-  /* ===== Flechas de scroll (tabla) ===== */
-  const scrollRef = useRef(null);
-  const [hint, setHint] = useState({ left: false, right: false });
-  useEffect(() => {
-    const el = scrollRef.current;
+  const updateScrollIndicators = () => {
+    const el = wrapperRef.current;
     if (!el) return;
-    const update = () => {
-      const canScroll = el.scrollWidth > el.clientWidth;
-      if (!canScroll) return setHint({ left: false, right: false });
-      setHint({
-        left: el.scrollLeft > 6,
-        right: el.scrollLeft + el.clientWidth < el.scrollWidth - 6,
-      });
-    };
-    update();
-    el.addEventListener('scroll', update, { passive: true });
-    const ro = new ResizeObserver(update);
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setShowLeft(scrollLeft > 4);
+    setShowRight(scrollLeft + clientWidth < scrollWidth - 4);
+  };
+
+  useEffect(() => {
+    updateScrollIndicators();
+    const el = wrapperRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updateScrollIndicators, { passive: true });
+    const ro = new ResizeObserver(updateScrollIndicators);
     ro.observe(el);
     return () => {
-      el.removeEventListener('scroll', update);
+      el.removeEventListener('scroll', updateScrollIndicators);
       ro.disconnect();
     };
-  }, [pageItems, visibleStores]);
+  }, [visibleStores, filteredSorted]);
 
   /* ===== Render ===== */
+  const pageItems = useMemo(() => filteredSorted.slice(0, rowsPerPage), [filteredSorted, rowsPerPage]);
+
   return (
     <main className="container" style={{ paddingTop: 18, paddingBottom: 24 }}>
       <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>
@@ -269,65 +268,38 @@ export default function Productos() {
 
       {/* ===== Toolbar ===== */}
       <section className="toolbar">
-        {/* Buscar + sugerencias (grupo con posición relativa para dropdown) */}
-        <div className="toolbar-row">
-          <div className="toolbar-group" style={{ flex: 1, minWidth: 260, position: 'relative' }} ref={searchGroupRef}>
+        {/* FILA 1: Buscar + Categoría + Ordenar */}
+        <div className="toolbar-row" style={{ position: 'relative' }}>
+          {/* Buscar */}
+          <div className="toolbar-group search-group" ref={searchGroupRef} style={{ flex: 1, minWidth: 260, position: 'relative' }}>
             <label className="toolbar-label" htmlFor="buscar">Buscar</label>
             <input
               id="buscar"
               className="toolbar-input"
               value={q}
-              onChange={(e) => { setQ(e.target.value); setShowSuggest(true); }}
-              onFocus={() => setShowSuggest(true)}
+              onChange={(e) => setQ(e.target.value)}
               placeholder="Ej: arroz, aceite, papel, sal…"
               autoComplete="off"
             />
-            {/* Sugerencias superpuestas bajo el input (no empujan el layout) */}
-            {showSuggest && q && suggestions.length > 0 && (
-              <div
-                className="sugg-panel"
-                // fallback por si los estilos aún no están cargados
-                style={{ position: 'absolute', left: 0, right: 0, zIndex: 60 }}
-              >
+            {/* Sugerencias superpuestas (no empujan nada) */}
+            {q && suggestions.length > 0 && (
+              <div className="sugg-panel">
                 {suggestions.map((name) => (
                   <button
                     key={name}
                     type="button"
                     className="sugg-item"
-                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseDown={(e) => e.preventDefault()} // evita blur antes del click
                     onClick={() => addToken(name)}
                   >
                     {name}
                   </button>
                 ))}
-                <div className="suggest-meta">{suggestions.length} de {Object.keys(productos).length} productos</div>
-              </div>
-            )}
-
-            {/* Chips SIEMPRE bajo el buscador (móvil y desktop) */}
-            {tokens.length > 0 && (
-              <div className="selected-chips" style={{ marginTop: 10 }}>
-                {tokens.map((t) => (
-                  <span key={t} className="chip chip-active" title={t}>
-                    {t}
-                    <button
-                      type="button"
-                      className="chip-x"
-                      aria-label={`Eliminar ${t}`}
-                      onClick={() => removeToken(t)}
-                      style={{ marginLeft: 8 }}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                <button type="button" className="btn btn-ghost btn-sm" onClick={clearSearch} style={{ marginLeft: 6 }}>
-                  Limpiar búsqueda
-                </button>
               </div>
             )}
           </div>
 
+          {/* Categoría */}
           <div className="toolbar-group" style={{ minWidth: 220 }}>
             <label className="toolbar-label" htmlFor="categoria">Categoría</label>
             <select
@@ -344,6 +316,7 @@ export default function Productos() {
             </select>
           </div>
 
+          {/* Ordenar */}
           <div className="toolbar-group" style={{ minWidth: 220 }}>
             <label className="toolbar-label" htmlFor="ordenar">Ordenar</label>
             <select
@@ -359,7 +332,32 @@ export default function Productos() {
           </div>
         </div>
 
-        {/* Fila de acciones */}
+        {/* FILA 2: Chips SIEMPRE bajo el buscador */}
+        <div className="toolbar-row toolbar-chips-row" style={{ marginTop: 6 }}>
+          <div className="chips-scroll">
+            {tokens.map((t) => (
+              <span key={t} className="chip chip-active" title={t}>
+                {t}
+                <button
+                  type="button"
+                  className="chip-x"
+                  aria-label={`Eliminar ${t}`}
+                  onClick={() => removeToken(t)}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+
+          {tokens.length > 0 && (
+            <button type="button" className="btn btn-ghost" onClick={clearSearch}>
+              Limpiar búsqueda
+            </button>
+          )}
+        </div>
+
+        {/* FILA 3: Acciones */}
         <div className="toolbar-row actions-row">
           {/* Tiendas (permanece abierto al seleccionar varias) */}
           <div className="toolbar__export" ref={storesRef}>
@@ -390,15 +388,12 @@ export default function Productos() {
                   <button
                     key={slug}
                     type="button"
-                    className={`btn ${on ? 'btn-primary' : 'btn-secondary'}`}
+                    className="store-pill"
                     aria-pressed={on}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleStore(slug); // NO cerramos el menú
-                    }}
+                    onClick={() => toggleStore(slug)} // no cerramos menú
                     title={on ? `Ocultar ${label}` : `Mostrar ${label}`}
                   >
-                    {label}
+                    <span className={`dot ${on ? 'on' : ''}`} /> {label}
                   </button>
                 );
               })}
@@ -421,7 +416,7 @@ export default function Productos() {
                 <button
                   key={n}
                   type="button"
-                  className="btn btn-secondary"
+                  className="menu-item"
                   onClick={() => {
                     setRowsPerPage(n);
                     setOpenRows(false);
@@ -447,7 +442,7 @@ export default function Productos() {
             <div className={`export-menu ${openExport ? 'show' : ''}`} role="menu">
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="menu-item"
                 onClick={async () => {
                   try {
                     const txt = tableToTSV(pageItems, visibleStores);
@@ -463,7 +458,7 @@ export default function Productos() {
               </button>
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="menu-item"
                 onClick={() => {
                   downloadCSV(pageItems, visibleStores);
                   setOpenExport(false);
@@ -473,7 +468,7 @@ export default function Productos() {
               </button>
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="menu-item"
                 onClick={() => {
                   downloadExcelLikeCSV(pageItems, visibleStores);
                   setOpenExport(false);
@@ -504,64 +499,60 @@ export default function Productos() {
       {/* error */}
       {err && <p style={{ color: 'red', marginTop: 8 }}>Error al cargar datos: {err}</p>}
 
-      {/* ===== Tabla con wrapper y flechas ===== */}
-      <div className="table-scroll-wrap" style={{ marginTop: 10, position: 'relative' }}>
-        <div className="scroll-arrows">
-          <span className={`arrow ${hint.left ? '' : 'hide'}`} aria-hidden>‹</span>
-          <span className={`arrow ${hint.right ? '' : 'hide'}`} aria-hidden>›</span>
-        </div>
+      {/* ===== Tabla ===== */}
+      <div className="table-wrapper" ref={wrapperRef}>
+        {showLeft && <div className="scroll-indicator left">‹</div>}
+        {showRight && <div className="scroll-indicator right">›</div>}
 
-        <div className="table-scroll" ref={scrollRef} style={{ overflowX: 'auto' }}>
-          <table>
-            <thead>
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Formato</th>
+              {visibleStores.map((s) => (
+                <th key={s} style={{ textAlign: 'right', textTransform: 'capitalize' }}>
+                  {STORE_META[s]?.label ?? s}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {pageItems.length === 0 && (
               <tr>
-                <th>Producto</th>
-                <th>Formato</th>
-                {visibleStores.map((s) => (
-                  <th key={s} style={{ textAlign: 'right', textTransform: 'capitalize' }}>
-                    {STORE_META[s]?.label ?? s}
-                  </th>
-                ))}
+                <td colSpan={2 + visibleStores.length} style={{ padding: 16, color: '#6B7280', textAlign: 'center' }}>
+                  No se encontraron productos para la búsqueda/filtros actuales.
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {pageItems.length === 0 && (
-                <tr>
-                  <td colSpan={2 + visibleStores.length} style={{ padding: 16, color: '#6B7280', textAlign: 'center' }}>
-                    No se encontraron productos para la búsqueda/filtros actuales.
-                  </td>
-                </tr>
-              )}
+            )}
 
-              {pageItems.map(([nombre, info]) => {
-                const min = cheapestVisible(info.precios, visibleStores);
-                return (
-                  <tr key={nombre}>
-                    <td>{nombre}</td>
-                    <td>{info.formato || '—'}</td>
-                    {visibleStores.map((s) => {
-                      const val = info.precios[s];
-                      const isMin = min != null && val === min;
-                      return (
-                        <td
-                          key={s}
-                          style={{
-                            textAlign: 'right',
-                            fontWeight: isMin ? 700 : 500,
-                            background: isMin ? '#e6f7e6' : 'transparent',
-                            color: isMin ? '#006400' : '#111827',
-                          }}
-                        >
-                          {val != null ? CLP(val) : '—'}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+            {pageItems.map(([nombre, info]) => {
+              const min = cheapestVisible(info.precios, visibleStores);
+              return (
+                <tr key={nombre}>
+                  <td>{nombre}</td>
+                  <td>{info.formato || '—'}</td>
+                  {visibleStores.map((s) => {
+                    const val = info.precios[s];
+                    const isMin = min != null && val === min;
+                    return (
+                      <td
+                        key={s}
+                        style={{
+                          textAlign: 'right',
+                          fontWeight: isMin ? 700 : 500,
+                          background: isMin ? '#e6f7e6' : 'transparent',
+                          color: isMin ? '#006400' : '#111827',
+                        }}
+                      >
+                        {val != null ? CLP(val) : '—'}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       <p className="muted" style={{ marginTop: 14 }}>
@@ -590,7 +581,7 @@ function downloadCSV(items, stores) {
   const lines = [header.join(',')];
   items.forEach(([nombre, info]) => {
     const row = [csvCell(nombre), csvCell(info.formato || '—'), ...stores.map((s) => csvCell(info.precios[s] ?? ''))];
-    lines.push(row.join(','));
+    lines.push(row.join(',')); 
   });
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a');
@@ -601,7 +592,7 @@ function downloadCSV(items, stores) {
 }
 
 function downloadExcelLikeCSV(items, stores) {
-  downloadCSV(items, stores); // simple: mismo CSV sirve para Excel
+  downloadCSV(items, stores); // El CSV sirve para Excel
 }
 
 function csvCell(v) {

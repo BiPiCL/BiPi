@@ -66,6 +66,7 @@ strong { color: #111827; }
   margin-bottom: 8px;
 }
 .toolbar-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 220px; }
+.search-group { position: relative; }  /* << clave: ancla las sugerencias al buscador */
 .toolbar-label { font-size: .9rem; color: #1E40AF; font-weight: 700; }
 
 /* Inputs */
@@ -99,7 +100,7 @@ strong { color: #111827; }
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0,0,0,.08);
   padding: 8px;
-  z-index: 99;
+  z-index: 200;           /* por encima de chips y otros */
   max-height: 280px;
   overflow-y: auto;
 }
@@ -233,12 +234,10 @@ strong { color: #111827; }
    ========================================================= */
 .table-wrapper {
   position: relative;
-  overflow-x: auto;           /* mantiene el scroll horizontal */
+  overflow-x: auto;
   margin-top: 10px;
   scroll-behavior: smooth;
 }
-
-/* Gradientes laterales (pistas) */
 .table-wrapper::before,
 .table-wrapper::after {
   content: '';
@@ -258,7 +257,7 @@ strong { color: #111827; }
   background: linear-gradient(to left, #F9FAFB 40%, transparent);
 }
 
-/* Flechas indicativas — posicionadas FUERA del cuadro de precios */
+/* Flechas indicativas — FUERA del cuadro de precios */
 .scroll-indicator {
   position: absolute;
   top: 50%;
@@ -272,7 +271,7 @@ strong { color: #111827; }
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 2px 8px rgba(0,0,0,.15);
   z-index: 6;
-  pointer-events: none; /* no tapa la tabla */
+  pointer-events: none;
 }
 .scroll-indicator.left  { left: 0;  transform: translate(-120%, -50%); }
 .scroll-indicator.right { right: 0; transform: translate(120%, -50%); }

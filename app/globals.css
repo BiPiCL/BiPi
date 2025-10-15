@@ -197,19 +197,27 @@ strong { color: #111827; }
 .sugg-foot { margin-top: 6px; font-size: .85rem; color: #6B7280; text-align: center; }
 
 /* =========================================================
-   CHIPS / PRODUCTOS SELECCIONADOS
+   CHIPS / PRODUCTOS SELECCIONADOS (alineación horizontal)
    ========================================================= */
 .chips-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 8px; }
-.toolbar-chips {
-  display: flex;
-  flex: 1;
-  gap: 8px;
-  flex-wrap: wrap;
-  min-width: 260px;
-  align-items: center;
+
+.toolbar-row.chips-row {
+  width: 100%;
+  align-items: flex-start;
+  gap: 10px;
 }
+.toolbar-row.chips-row .toolbar-chips {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  gap: 8px 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+}
+
 .chip {
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
@@ -226,26 +234,10 @@ strong { color: #111827; }
 .chip-active { background: #1E3A8A; color: #fff; border-color: #1E3A8A; }
 .chip-x { border: none; background: transparent; color: #fff; font-size: .95rem; cursor: pointer; }
 
-/* Desktop: chips en horizontal y “Limpiar búsqueda” a la derecha */
 @media (min-width: 1024px) {
-  .toolbar-row.chips-row { width: 100%; align-items: center; flex-wrap: wrap; }
-  .toolbar-row.chips-row .toolbar-chips {
-    flex: 1 1 auto !important;
-    min-width: 0;
-    width: 100%;
-    display: flex !important;
-    flex-direction: row !important;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 10px;
-  }
-  .toolbar-row.chips-row .chip { flex: 0 0 auto; width: auto; }
   .toolbar-row.chips-row .btn { margin-left: auto; }
 }
-
-/* Móvil: separación sutil del botón respecto a las chips */
 @media (max-width: 1023.98px) {
-  .toolbar-row.chips-row { gap: 10px 10px; }
   .toolbar-row.chips-row .btn { margin-top: 6px; }
 }
 
@@ -302,28 +294,14 @@ strong { color: #111827; }
   overflow-x: auto;
   margin-top: 10px;
   scroll-behavior: smooth;
-  padding: 0;                /* sin padding lateral */
+  padding: 0;
 }
-/* 🔴 Eliminados los pseudo-elementos ::before/::after (difuminados) */
-
-.scroll-indicator {
-  position: absolute;
-  top: 45%; transform: translateY(-50%);
-  font-size: 22px; font-weight: 800; color: #2563EB;
-  background: #fff; border-radius: 50%;
-  width: 28px; height: 28px;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,.15);
-  z-index: 20;
-}
-.scroll-indicator.left  { left: -14px; }
-.scroll-indicator.right { right: -14px; }
 
 table {
   border-collapse: collapse;
   width: 100%;
   min-width: 600px;
-  border: 1px solid #E5E7EB;   /* borde externo de la tabla */
+  border: 1px solid #E5E7EB;
 }
 th, td { border-bottom: 1px solid #E5E7EB; padding: 10px 12px; text-align: left; }
 th { font-weight: 800; color: #111827; background: #F3F4F6; white-space: nowrap; }

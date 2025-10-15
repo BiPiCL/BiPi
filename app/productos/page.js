@@ -70,7 +70,7 @@ export default function Productos() {
     'santa-isabel': true,
   });
 
-  /* ===== Leer parámetros desde URL (para compartir búsquedas) ===== */
+  /* ===== Leer parámetros desde URL ===== */
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
@@ -275,7 +275,7 @@ export default function Productos() {
       <section className="toolbar">
         {/* Fila superior: Buscar / Categoría / Ordenar */}
         <div className="toolbar-row">
-          {/* === BUSCAR: input + dropdown dentro de .search-group (relative) === */}
+          {/* === BUSCAR: input + dropdown (relative) === */}
           <div className="toolbar-group" style={{ flex: 1, minWidth: 260 }}>
             <label className="toolbar-label" htmlFor="buscar">Buscar</label>
 
@@ -305,6 +305,31 @@ export default function Productos() {
                 </div>
               )}
             </div>
+
+            {/* === MOVIDO AQUÍ: chips debajo de BUSCAR (fuera de .search-group) === */}
+            {tokens.length > 0 && (
+              <div className="chips-inline">
+                <div className="toolbar-chips" role="list">
+                  {tokens.map((t) => (
+                    <span key={t} className="chip chip-active" role="listitem" title={t}>
+                      {t}
+                      <button
+                        type="button"
+                        className="chip-x"
+                        aria-label={`Eliminar ${t}`}
+                        onClick={() => removeToken(t)}
+                        style={{ marginLeft: 6 }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <button type="button" className="btn btn-ghost" onClick={clearSearch}>
+                  Limpiar búsqueda
+                </button>
+              </div>
+            )}
           </div>
 
           {/* === Categoría === */}
@@ -339,31 +364,6 @@ export default function Productos() {
             </select>
           </div>
         </div>
-
-        {/* === Fila de chips + botón limpiar (FUERA de .search-group) === */}
-        {tokens.length > 0 && (
-          <div className="toolbar-row chips-row">
-            <div className="toolbar-chips" role="list">
-              {tokens.map((t) => (
-                <span key={t} className="chip chip-active" role="listitem" title={t}>
-                  {t}
-                  <button
-                    type="button"
-                    className="chip-x"
-                    aria-label={`Eliminar ${t}`}
-                    onClick={() => removeToken(t)}
-                    style={{ marginLeft: 6 }}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-            <button type="button" className="btn btn-ghost" onClick={clearSearch}>
-              Limpiar búsqueda
-            </button>
-          </div>
-        )}
 
         {/* === Acciones === */}
         <div className="toolbar-row actions-row">
@@ -498,7 +498,6 @@ export default function Productos() {
 
       {/* ===== Tabla ===== */}
       <div className="table-wrapper">
-        {/* 🔸 Quitamos los circulitos de scroll: ya NO renderizamos nada aquí */}
         <table>
           <thead>
             <tr>
@@ -564,7 +563,7 @@ export default function Productos() {
                 })}
               </tbody>
 
-              {/* ===== Totales ===== */}
+              {/* Totales */}
               {pageItems.length > 0 && (
                 <tfoot>
                   <tr>

@@ -199,39 +199,40 @@ strong { color: #111827; }
 /* =========================================================
    CHIPS / PRODUCTOS SELECCIONADOS
    ========================================================= */
-/* contenedor que se dibuja justo DEBAJO de “Buscar” */
+
+/* contenedor que se dibuja justo DEBAJO de “Buscar” (en móvil lo usamos) */
 .chips-inline{
   display:flex;
   flex-wrap:wrap;
   align-items:center;
-  gap:12px 14px;         /* ↑ más aire entre chips */
+  gap:14px 16px;
   margin-top:10px;
 }
 
-/* fila dedicada a chips (ocupa todo el ancho del card) */
+/* fila dedicada a chips (desktop y móvil) */
 .toolbar-row.chips-row{
   width:100%;
   align-items:flex-start;
-  gap:12px 14px;
+  gap:14px 16px;
 }
 
-/* las chips usan 100% del ancho disponible; el botón puede bajar */
-.toolbar-row.chips-row .toolbar-chips{
-  display:flex !important;
-  flex-direction:row !important;
-  flex-wrap:wrap !important;
-  gap:12px 14px;         /* mismo aire que arriba */
+/* 🔧 Ajuste base: quitamos el min-width antiguo y damos 100% real */
+.toolbar-chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:14px 16px;      /* aire entre chips */
+  align-items:center;
   flex:1 1 100%;
   width:100%;
-  min-width:0;
+  min-width:0;        /* ← importante para que pueda usar todo el ancho */
 }
 
-/* chip individual, un pelín más grande */
+/* chip individual */
 .chip{
-  display:inline-flex !important;
+  display:inline-flex;
   align-items:center;
   gap:6px;
-  padding:8px 13px;      /* ↑ padding */
+  padding:8px 13px;
   border-radius:9999px;
   border:1px solid #d1d5db;
   background:#fff;
@@ -245,9 +246,9 @@ strong { color: #111827; }
 .chip-active{ background:#1E3A8A; color:#fff; border-color:#1E3A8A; }
 .chip-x{ border:none; background:transparent; color:#fff; font-size:.95rem; cursor:pointer; }
 
-/* Importante: NO reservamos espacio a la derecha para el botón en desktop */
+/* En desktop, el botón NO ocupa una “columna fija”; fluye o baja si no cabe */
 @media (min-width:1024px){
-  .toolbar-row.chips-row .btn{ /* sin margin-left:auto; puede fluir o bajar */ }
+  .toolbar-row.chips-row .btn{ /* sin margin-left:auto */ }
 }
 
 /* En móvil, si queda debajo, un poco de aire */

@@ -197,30 +197,34 @@ strong { color: #111827; }
 .sugg-foot { margin-top: 6px; font-size: .85rem; color: #6B7280; text-align: center; }
 
 /* =========================================================
-   CHIPS / PRODUCTOS SELECCIONADOS (alineación horizontal)
+   CHIPS / PRODUCTOS SELECCIONADOS (alineación horizontal + aire extra)
    ========================================================= */
-.chips-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 8px; }
-
+.chips-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;          /* ↑ antes 8px 10px */
+  margin-top: 8px;
+}
 .toolbar-row.chips-row {
   width: 100%;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;               /* ↑ un poquito más de separación general */
 }
 .toolbar-row.chips-row .toolbar-chips {
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: wrap !important;
-  gap: 8px 10px;
+  gap: 10px 12px;          /* ↑ aire entre chips */
   flex: 1 1 auto;
   min-width: 0;
   width: 100%;
 }
-
 .chip {
   display: inline-flex !important;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 7px 12px;       /* ↑ un pelín más de padding */
   border-radius: 9999px;
   border: 1px solid #d1d5db;
   background: #fff;
@@ -296,7 +300,6 @@ strong { color: #111827; }
   scroll-behavior: smooth;
   padding: 0;
 }
-
 table {
   border-collapse: collapse;
   width: 100%;

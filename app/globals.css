@@ -197,52 +197,62 @@ strong { color: #111827; }
 .sugg-foot { margin-top: 6px; font-size: .85rem; color: #6B7280; text-align: center; }
 
 /* =========================================================
-   CHIPS / PRODUCTOS SELECCIONADOS (alineación horizontal + aire extra)
+   CHIPS / PRODUCTOS SELECCIONADOS
    ========================================================= */
-.chips-inline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 12px;          /* ↑ antes 8px 10px */
-  margin-top: 8px;
+/* contenedor que se dibuja justo DEBAJO de “Buscar” */
+.chips-inline{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:12px 14px;         /* ↑ más aire entre chips */
+  margin-top:10px;
 }
-.toolbar-row.chips-row {
-  width: 100%;
-  align-items: flex-start;
-  gap: 12px;               /* ↑ un poquito más de separación general */
-}
-.toolbar-row.chips-row .toolbar-chips {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: wrap !important;
-  gap: 10px 12px;          /* ↑ aire entre chips */
-  flex: 1 1 auto;
-  min-width: 0;
-  width: 100%;
-}
-.chip {
-  display: inline-flex !important;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;       /* ↑ un pelín más de padding */
-  border-radius: 9999px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  color: #1E40AF;
-  font-weight: 600;
-  font-size: .85rem;
-  line-height: 1;
-  white-space: nowrap;
-  flex: 0 0 auto;
-}
-.chip-active { background: #1E3A8A; color: #fff; border-color: #1E3A8A; }
-.chip-x { border: none; background: transparent; color: #fff; font-size: .95rem; cursor: pointer; }
 
-@media (min-width: 1024px) {
-  .toolbar-row.chips-row .btn { margin-left: auto; }
+/* fila dedicada a chips (ocupa todo el ancho del card) */
+.toolbar-row.chips-row{
+  width:100%;
+  align-items:flex-start;
+  gap:12px 14px;
 }
-@media (max-width: 1023.98px) {
-  .toolbar-row.chips-row .btn { margin-top: 6px; }
+
+/* las chips usan 100% del ancho disponible; el botón puede bajar */
+.toolbar-row.chips-row .toolbar-chips{
+  display:flex !important;
+  flex-direction:row !important;
+  flex-wrap:wrap !important;
+  gap:12px 14px;         /* mismo aire que arriba */
+  flex:1 1 100%;
+  width:100%;
+  min-width:0;
+}
+
+/* chip individual, un pelín más grande */
+.chip{
+  display:inline-flex !important;
+  align-items:center;
+  gap:6px;
+  padding:8px 13px;      /* ↑ padding */
+  border-radius:9999px;
+  border:1px solid #d1d5db;
+  background:#fff;
+  color:#1E40AF;
+  font-weight:600;
+  font-size:.85rem;
+  line-height:1;
+  white-space:nowrap;
+  flex:0 0 auto;
+}
+.chip-active{ background:#1E3A8A; color:#fff; border-color:#1E3A8A; }
+.chip-x{ border:none; background:transparent; color:#fff; font-size:.95rem; cursor:pointer; }
+
+/* Importante: NO reservamos espacio a la derecha para el botón en desktop */
+@media (min-width:1024px){
+  .toolbar-row.chips-row .btn{ /* sin margin-left:auto; puede fluir o bajar */ }
+}
+
+/* En móvil, si queda debajo, un poco de aire */
+@media (max-width:1023.98px){
+  .toolbar-row.chips-row .btn{ margin-top:6px; }
 }
 
 /* =========================================================

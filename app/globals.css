@@ -200,7 +200,7 @@ strong { color: #111827; }
    CHIPS / PRODUCTOS SELECCIONADOS
    ========================================================= */
 
-/* contenedor que se dibuja justo DEBAJO de “Buscar” (en móvil lo usamos) */
+/* (móvil alternativo, no esencial si ya usas chips-row) */
 .chips-inline{
   display:flex;
   flex-wrap:wrap;
@@ -216,15 +216,15 @@ strong { color: #111827; }
   gap:14px 16px;
 }
 
-/* 🔧 Ajuste base: quitamos el min-width antiguo y damos 100% real */
-.toolbar-chips{
+/* ⛳️ FIX: ocupar el 100% REAL del ancho de la tarjeta */
+.toolbar-row.chips-row .toolbar-chips{
   display:flex;
   flex-wrap:wrap;
-  gap:14px 16px;      /* aire entre chips */
+  gap:14px 16px;    /* aire entre chips */
   align-items:center;
-  flex:1 1 100%;
+  flex:0 0 100%;    /* ← fuerza 100% de la fila */
   width:100%;
-  min-width:0;        /* ← importante para que pueda usar todo el ancho */
+  min-width:0;
 }
 
 /* chip individual */
@@ -246,12 +246,11 @@ strong { color: #111827; }
 .chip-active{ background:#1E3A8A; color:#fff; border-color:#1E3A8A; }
 .chip-x{ border:none; background:transparent; color:#fff; font-size:.95rem; cursor:pointer; }
 
-/* En desktop, el botón NO ocupa una “columna fija”; fluye o baja si no cabe */
+/* El botón fluye; si no cabe a la derecha, baja de línea */
 @media (min-width:1024px){
   .toolbar-row.chips-row .btn{ /* sin margin-left:auto */ }
 }
 
-/* En móvil, si queda debajo, un poco de aire */
 @media (max-width:1023.98px){
   .toolbar-row.chips-row .btn{ margin-top:6px; }
 }

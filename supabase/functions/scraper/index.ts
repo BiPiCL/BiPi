@@ -1,5 +1,4 @@
-// supabase/functions/scraper/index.ts
-
+// supabase/functions/scrape/index.ts
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -9,7 +8,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const USER_AGENTS = [
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0 Safari/537.36",
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.1 Safari/605.1.15",
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/121.0 Safari/537.36",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/121.0 Safari/537.36"
 ];
 
 function pickUA() {
@@ -23,15 +22,19 @@ function humanDelay(min = 600, max = 1800) {
 }
 
 // 3) fetch con backoff
-async function fetchWithBackoff(url: string, opts: RequestInit = {}, attempt = 0): Promise<Response> {
+async function fetchWithBackoff(url, opts: RequestInit = {}, attempt = 0): Promise<Response> {
   const headers = {
     "User-Agent": pickUA(),
     "Accept-Language": "es-CL,es;q=0.9",
     "Referer": "https://www.google.com/",
-    ...(opts.headers || {}),
+    ...(opts.headers || {})
   };
 
-  const res = await fetch(url, { ...opts, headers, cache: "no-store" });
+  const res = await fetch(url, {
+    ...opts,
+    headers,
+    cache: "no-store"
+  });
 
   if ([429, 503].includes(res.status) && attempt < 4) {
     const wait = Math.min(20000, 500 * 2 ** attempt + Math.random() * 500);
@@ -45,6 +48,7 @@ async function fetchWithBackoff(url: string, opts: RequestInit = {}, attempt = 0
 // 4) Parser genérico de CLP desde HTML
 function parseCLPFromHTML(html: string | null): number | null {
   if (!html) return null;
+
   const text = String(html).replace(/\s+/g, " ");
   const regex = /(?:\$|\b)\s?(\d{1,3}(?:\.\d{3}){0,3})(?:,\d+)?/g;
 
@@ -65,19 +69,25 @@ function parseCLPFromHTML(html: string | null): number | null {
 }
 
 // ====== Edge Function principal ======
-
 serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    // 🔴 CAMBIO IMPORTANTE: ahora usamos SERVICE_ROLE_KEY (nuevo secret editable)
+    const serviceKey = Deno.env.get("SERVICE_ROLE_KEY");
 
     if (!supabaseUrl || !serviceKey) {
-      console.error("Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY");
-      return json({ ok: false, error: "Faltan variables de entorno" }, 500);
+      console.error("Faltan SUPABASE_URL o SERVICE_ROLE_KEY");
+      return json(
+        {
+          ok: false,
+          error: "Faltan variables de entorno (SUPABASE_URL o SERVICE_ROLE_KEY)"
+        },
+        500
+      );
     }
 
     const supabase = createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false },
+      auth: { persistSession: false }
     });
 
     // Permitir ?limit=XX para probar pocos productos
@@ -110,16 +120,11 @@ serve(async (req) => {
     }
 
     console.log(`Procesando ${rows.length} store_products`);
-
     const results: any[] = [];
 
     // 2) Recorrer productos
-    for (const row of rows) {
-      const { id: storeProductId, store_slug, ext_sku } = row as {
-        id: string;
-        store_slug: string;
-        ext_sku: string;
-      };
+    for (const row of rows as any[]) {
+      const { id: storeProductId, store_slug, ext_sku } = row;
 
       const productUrl = buildProductUrl(store_slug, ext_sku);
       if (!productUrl) {
@@ -137,7 +142,7 @@ serve(async (req) => {
             storeProductId,
             store_slug,
             status: "http-error",
-            httpStatus: res.status,
+            httpStatus: res.status
           });
           continue;
         }
@@ -150,7 +155,7 @@ serve(async (req) => {
           const { error: insError } = await supabase.from("prices").insert({
             store_product_id: storeProductId,
             price_clp: 0,
-            disponible: false,
+            disponible: false
           });
 
           if (insError) {
@@ -159,13 +164,13 @@ serve(async (req) => {
               storeProductId,
               store_slug,
               status: "insert-error",
-              error: insError.message,
+              error: insError.message
             });
           } else {
             results.push({
               storeProductId,
               store_slug,
-              status: "no-price-found",
+              status: "no-price-found"
             });
           }
         } else {
@@ -173,7 +178,7 @@ serve(async (req) => {
           const { error: insError } = await supabase.from("prices").insert({
             store_product_id: storeProductId,
             price_clp: price,
-            disponible: true,
+            disponible: true
           });
 
           if (insError) {
@@ -182,7 +187,7 @@ serve(async (req) => {
               storeProductId,
               store_slug,
               status: "insert-error",
-              error: insError.message,
+              error: insError.message
             });
           } else {
             console.log(`OK [${store_slug}] ${ext_sku} → ${price}`);
@@ -190,7 +195,7 @@ serve(async (req) => {
               storeProductId,
               store_slug,
               status: "ok",
-              price,
+              price
             });
           }
         }
@@ -200,7 +205,7 @@ serve(async (req) => {
           storeProductId,
           store_slug,
           status: "scrape-error",
-          error: String(e),
+          error: String(e)
         });
       }
     }
@@ -213,11 +218,10 @@ serve(async (req) => {
 });
 
 /* ===== Helpers locales ===== */
-
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json; charset=utf-8" },
+    headers: { "Content-Type": "application/json; charset=utf-8" }
   });
 }
 
@@ -228,25 +232,18 @@ function buildProductUrl(storeSlug: string, extSku: string): string | null {
   switch (storeSlug) {
     case "lider":
       // Ajustable según el patrón real de tus URLs de Lider.
-      // Si tus ext_sku son sólo códigos (ej: 00228610000000),
-      // revisa en el navegador cuál es el patrón más estable y cámbialo aquí.
       return `https://super.lider.cl/ip/panaderia-granel/${extSku}`;
 
     case "jumbo":
-      // En muchos casos las URLs de Jumbo son /<slug>/p
-      // Si tu ext_sku viene sin el /p final, lo agregamos.
       return `https://www.jumbo.cl/${extSku}/p`;
 
     case "unimarc":
-      // Tus URLs parecen ser /product/<slug>
       return `https://www.unimarc.cl/product/${extSku}`;
 
     case "santa-isabel":
-      // Similar a Unimarc (ajusta si es distinto)
       return `https://www.santaisabel.cl/product/${extSku}`;
 
     default:
       return null;
   }
 }
-

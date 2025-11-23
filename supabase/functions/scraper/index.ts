@@ -31,6 +31,7 @@ async function fetchWithBackoff(
     "User-Agent": pickUA(),
     "Accept-Language": "es-CL,es;q=0.9",
     "Referer": "https://www.google.com/",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     ...(opts.headers || {})
   };
 
@@ -49,12 +50,12 @@ async function fetchWithBackoff(
   return res;
 }
 
-// 4) Parser de precios CLP mejorado (estructurado + heurística)
-function parseCLPFromHTML(html: string | null, storeSlug?: string): number | null {
+// 4) Parser de precios CLP mejorado (JSON-LD + heurística)
+function parseCLPFromHTML(html: string | null): number | null {
   if (!html) return null;
   const text = String(html);
 
-  // -------- A) Intentar JSON-LD (muy común en Jumbo/Unimarc/etc.) --------
+  // A) Intentar JSON-LD
   const jsonLdPrices: number[] = [];
   const jsonLdRegex =
     /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
@@ -81,9 +82,7 @@ function parseCLPFromHTML(html: string | null, storeSlug?: string): number | nul
       };
 
       walk(parsed);
-    } catch {
-      // ignorar JSON inválido
-    }
+    } catch {}
   }
 
   if (jsonLdPrices.length) {
@@ -91,7 +90,7 @@ function parseCLPFromHTML(html: string | null, storeSlug?: string): number | nul
     return jsonLdPrices[0];
   }
 
-  // -------- B) Buscar patrones tipo "price": 2590 en scripts --------
+  // B) Buscar "price": 2590 en scripts
   const scriptPrices: number[] = [];
   const priceKeyRegex = /"price"\s*:\s*"?(\d{3,7})"?/gi;
   let pm: RegExpExecArray | null;
@@ -108,10 +107,10 @@ function parseCLPFromHTML(html: string | null, storeSlug?: string): number | nul
     return scriptPrices[0];
   }
 
-  // -------- C) Fallback regex de $... pero evitando pesos/porcentajes --------
+  // C) Fallback: $1.990 etc evitando pesos/unidades
   const cleaned = text.replace(/\s+/g, " ");
-
   const dollarRegex = /\$\s?(\d{1,3}(?:\.\d{3}){0,3})(?:,\d+)?/g;
+
   const candidates: number[] = [];
   let m: RegExpExecArray | null;
 
@@ -120,7 +119,6 @@ function parseCLPFromHTML(html: string | null, storeSlug?: string): number | nul
     const num = parseInt(raw.replace(/\./g, ""), 10);
     if (Number.isNaN(num)) continue;
 
-    // mirar contexto cercano para descartar "500 g", "1 kg", "750 ml", "50%"
     const idx = m.index;
     const ctx = cleaned.slice(Math.max(0, idx - 8), idx + 12).toLowerCase();
     if (/(g|kg|gr|ml|lt|l|%|un|uds)/.test(ctx)) continue;
@@ -130,7 +128,7 @@ function parseCLPFromHTML(html: string | null, storeSlug?: string): number | nul
 
   if (!candidates.length) return null;
 
-  // -------- D) Elegir "moda" (más repetido). Si no, el menor razonable --------
+  // D) moda (más repetido); si no, menor razonable
   const freq = new Map<number, number>();
   for (const c of candidates) freq.set(c, (freq.get(c) || 0) + 1);
 
@@ -150,26 +148,20 @@ function parseCLPFromHTML(html: string | null, storeSlug?: string): number | nul
 serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceKey = Deno.env.get("SERVICE_ROLE_KEY"); // ✅ tu secret editable
+    const serviceKey = Deno.env.get("SERVICE_ROLE_KEY");
 
     if (!supabaseUrl || !serviceKey) {
-      console.error("Faltan SUPABASE_URL o SERVICE_ROLE_KEY");
-      return json(
-        { ok: false, error: "Faltan variables de entorno (SUPABASE_URL o SERVICE_ROLE_KEY)" },
-        500
-      );
+      return json({ ok: false, error: "Faltan variables de entorno" }, 500);
     }
 
     const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false }
     });
 
-    // Permitir ?limit=XX para probar pocos productos
     const url = new URL(req.url);
     const limitParam = url.searchParams.get("limit");
     const limit = limitParam ? Number(limitParam) : 0;
 
-    // 1) Leer store_products con ext_sku válido
     let query = supabase
       .from("store_products")
       .select("id, store_slug, ext_sku")
@@ -178,25 +170,17 @@ serve(async (req) => {
       .neq("ext_sku", "EMPTY")
       .neq("ext_sku", "search");
 
-    if (limit && Number.isFinite(limit) && limit > 0) {
-      query = query.limit(limit);
+    if (limit && limit > 0) query = query.limit(limit);
+
+    const { data: rows, error } = await query;
+    if (error) return json({ ok: false, error: error.message }, 500);
+
+    if (!rows?.length) {
+      return json({ ok: true, message: "No hay productos para scrapear" });
     }
 
-    const { data: rows, error: spError } = await query;
-
-    if (spError) {
-      console.error("Error leyendo store_products:", spError);
-      return json({ ok: false, error: spError.message }, 500);
-    }
-
-    if (!rows || !rows.length) {
-      return json({ ok: true, message: "No hay store_products con ext_sku válido" });
-    }
-
-    console.log(`Procesando ${rows.length} store_products`);
     const results: any[] = [];
 
-    // 2) Recorrer productos
     for (const row of rows as any[]) {
       const { id: storeProductId, store_slug, ext_sku } = row;
 
@@ -211,7 +195,6 @@ serve(async (req) => {
 
         const res = await fetchWithBackoff(productUrl);
         if (!res.ok) {
-          console.warn(`HTTP ${res.status} en ${productUrl}`);
           results.push({
             storeProductId,
             store_slug,
@@ -222,50 +205,25 @@ serve(async (req) => {
         }
 
         const html = await res.text();
+        const price = parseCLPFromHTML(html);
 
-        // ✅ ESTA es la línea clave: ahora le pasamos store_slug
-        const price = parseCLPFromHTML(html, store_slug);
-
-        if (price === null) {
-          const { error: insError } = await supabase.from("prices").insert({
+        if (price == null) {
+          await supabase.from("prices").insert({
             store_product_id: storeProductId,
             price_clp: 0,
             disponible: false
           });
-
-          if (insError) {
-            console.error("Error insertando price (no disponible):", insError);
-            results.push({
-              storeProductId,
-              store_slug,
-              status: "insert-error",
-              error: insError.message
-            });
-          } else {
-            results.push({ storeProductId, store_slug, status: "no-price-found" });
-          }
+          results.push({ storeProductId, store_slug, status: "no-price-found" });
         } else {
-          const { error: insError } = await supabase.from("prices").insert({
+          await supabase.from("prices").insert({
             store_product_id: storeProductId,
             price_clp: price,
             disponible: true
           });
-
-          if (insError) {
-            console.error("Error insertando price:", insError);
-            results.push({
-              storeProductId,
-              store_slug,
-              status: "insert-error",
-              error: insError.message
-            });
-          } else {
-            console.log(`OK [${store_slug}] ${ext_sku} → ${price}`);
-            results.push({ storeProductId, store_slug, status: "ok", price });
-          }
+          results.push({ storeProductId, store_slug, status: "ok", price });
         }
+
       } catch (e) {
-        console.error("Error scrappeando", store_slug, ext_sku, e);
         results.push({
           storeProductId,
           store_slug,
@@ -276,13 +234,12 @@ serve(async (req) => {
     }
 
     return json({ ok: true, processed: results.length, results });
+
   } catch (e) {
-    console.error("Error inesperado en scraper:", e);
     return json({ ok: false, error: String(e) }, 500);
   }
 });
 
-/* ===== Helpers locales ===== */
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -290,7 +247,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-// Construcción de URL según tienda + ext_sku
+// ✅ URLs por tienda
 function buildProductUrl(storeSlug: string, extSku: string): string | null {
   if (!extSku) return null;
 
@@ -299,7 +256,9 @@ function buildProductUrl(storeSlug: string, extSku: string): string | null {
       return `https://super.lider.cl/ip/panaderia-granel/${extSku}`;
 
     case "jumbo":
-      return `https://www.jumbo.cl/${extSku}/p`;
+      // 🔥 CAMBIO CLAVE: usamos el host SSR de smdigital
+      // que normalmente trae precio en HTML.
+      return `https://cl-jumbo-web-lb-render-v2.smdigital.cl/${extSku}/p`;
 
     case "unimarc":
       return `https://www.unimarc.cl/product/${extSku}`;

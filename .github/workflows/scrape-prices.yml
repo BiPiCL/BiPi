@@ -27,4 +27,4 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: npx ts-node scripts/scrape-all.ts
+        run: npx ts-node --project tsconfig.json scripts/scrape-all.ts
